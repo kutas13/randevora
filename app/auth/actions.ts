@@ -117,24 +117,57 @@ export async function registerAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent("Bu slug zaten kullanımda. Başka bir slug deneyin.")}`);
   }
 
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signUp({
+  // Admin API ile kullanıcı oluştur (trigger'a bağımlı değil)
+  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
     email: values.email,
     password: values.password,
-    options: {
-      data: {
-        business_name: values.businessName,
-        business_slug: values.slug,
-        category: values.category,
-        role: "owner",
-      },
+    email_confirm: true,
+    user_metadata: {
+      business_name: values.businessName,
+      business_slug: values.slug,
+      category: values.category,
+      role: "owner",
     },
   });
 
-  if (error) {
-    redirect(`/register?error=${encodeURIComponent(error.message)}`);
+  if (createError) {
+    redirect(`/register?error=${encodeURIComponent(createError.message)}`);
   }
+
+  const userId = newUser.user.id;
+
+  // İşletmeyi oluştur (status: pending)
+  const { data: business, error: bizError } = await admin
+    .from("businesses")
+    .insert({
+      owner_id: userId,
+      name: values.businessName,
+      slug: values.slug,
+      category: values.category,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (bizError) {
+    redirect(`/register?error=${encodeURIComponent(bizError.message)}`);
+  }
+
+  // Kullanıcı profilini oluştur
+  await admin.from("users").insert({
+    id: userId,
+    business_id: business.id,
+    role: "owner",
+    full_name: values.businessName,
+    email: values.email,
+  });
+
+  // Abonelik oluştur
+  await admin.from("subscriptions").insert({
+    business_id: business.id,
+    plan: "free",
+    status: "active",
+  });
 
   redirect("/pending-approval");
 }

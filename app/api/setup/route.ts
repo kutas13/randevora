@@ -10,7 +10,7 @@ export async function GET() {
 
   if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY .env.local dosyasına eklenmedi!" },
+      { error: "SUPABASE_SERVICE_ROLE_KEY eksik!" },
       { status: 500 }
     );
   }
@@ -20,7 +20,7 @@ export async function GET() {
   });
 
   try {
-    // Önce mevcut kullanıcıyı kontrol et
+    // 1. Mevcut kullanıcıyı kontrol et
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
       (u) => u.email === SUPER_ADMIN_EMAIL
@@ -30,13 +30,21 @@ export async function GET() {
 
     if (existingUser) {
       userId = existingUser.id;
-      // Şifreyi güncelle
-      await supabase.auth.admin.updateUserById(userId, {
+      // Şifreyi güncelle ve email'i onayla
+      const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
         password: SUPER_ADMIN_PASSWORD,
         email_confirm: true,
+        user_metadata: { role: "super_admin", full_name: "Super Admin" },
       });
+
+      if (updateError) {
+        return NextResponse.json(
+          { error: `Güncelleme hatası: ${updateError.message}` },
+          { status: 500 }
+        );
+      }
     } else {
-      // Yeni kullanıcı oluştur (Admin API - email provider durumundan bağımsız)
+      // Yeni kullanıcı oluştur
       const { data: newUser, error: createError } =
         await supabase.auth.admin.createUser({
           email: SUPER_ADMIN_EMAIL,
@@ -47,15 +55,17 @@ export async function GET() {
 
       if (createError) {
         return NextResponse.json(
-          { error: `Kullanıcı oluşturulamadı: ${createError.message}` },
+          {
+            error: `Kullanıcı oluşturulamadı: ${createError.message}`,
+            hint: "schema.sql'i Supabase SQL Editor'de çalıştırın. Trigger sorun çıkarıyor olabilir.",
+          },
           { status: 500 }
         );
       }
-
       userId = newUser.user.id;
     }
 
-    // public.users tablosuna ekle (upsert)
+    // 2. public.users tablosuna super admin olarak ekle
     const { error: upsertError } = await supabase.from("users").upsert(
       {
         id: userId,
@@ -67,15 +77,16 @@ export async function GET() {
     );
 
     if (upsertError) {
-      return NextResponse.json(
-        { error: `Users tablosu hatası: ${upsertError.message}` },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        partial: true,
+        message: `Auth kullanıcısı tamam ama public.users hatası: ${upsertError.message}. schema.sql çalıştırılmamış olabilir.`,
+        userId,
+      });
     }
 
     return NextResponse.json({
       success: true,
-      message: "Super admin hazır! Artık giriş yapabilirsiniz.",
+      message: "Super admin hazır! /login sayfasından giriş yapabilirsiniz.",
       email: SUPER_ADMIN_EMAIL,
       userId,
     });
