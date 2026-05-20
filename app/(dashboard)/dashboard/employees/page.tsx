@@ -1,50 +1,80 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, CalendarOff, Clock, Plus, UserMinus, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, Users } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { employees as initialEmployees } from "@/lib/mock-data";
 import { initials } from "@/lib/utils";
-import type { Employee } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 
-const workingHoursPresets = [
-  { label: "Tam gün", value: "09:00 - 18:00" },
-  { label: "Yarım gün", value: "09:00 - 13:00" },
-  { label: "Akşam", value: "14:00 - 22:00" },
-];
+type Employee = {
+  id: string;
+  full_name: string;
+  title: string | null;
+  phone: string | null;
+  email: string | null;
+  role: string;
+  active: boolean;
+};
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: "", role: "", workHours: "09:00 - 18:00" });
+  const [form, setForm] = useState({ full_name: "", title: "", phone: "", email: "", role: "employee" });
+  const supabase = createClient();
+  const { toast } = useToast();
 
-  function handleAdd() {
-    const newEmployee: Employee = {
-      id: `emp_${Date.now()}`,
-      name: form.name,
+  useEffect(() => { loadEmployees(); }, []);
+
+  async function loadEmployees() {
+    const { data } = await supabase.from("employees").select("*").order("created_at", { ascending: false });
+    setEmployees(data || []);
+    setLoading(false);
+  }
+
+  async function handleAdd() {
+    const { error } = await supabase.from("employees").insert({
+      full_name: form.full_name,
+      title: form.title || null,
+      phone: form.phone || null,
+      email: form.email || null,
       role: form.role,
-      active: true,
-      appointmentsToday: 0,
-    };
-    setEmployees([...employees, newEmployee]);
-    setForm({ name: "", role: "", workHours: "09:00 - 18:00" });
+      business_id: (await supabase.auth.getUser()).data.user?.user_metadata?.business_id,
+    });
+
+    if (error) {
+      toast("Çalışan eklenemedi: " + error.message, "error");
+      return;
+    }
+
+    toast("Çalışan eklendi!", "success");
+    setForm({ full_name: "", title: "", phone: "", email: "", role: "employee" });
     setShowModal(false);
+    loadEmployees();
   }
 
-  function toggleActive(id: string) {
-    setEmployees(employees.map((e) => (e.id === id ? { ...e, active: !e.active } : e)));
+  async function removeEmployee(id: string) {
+    const { error } = await supabase.from("employees").delete().eq("id", id);
+    if (error) {
+      toast("Silinemedi: " + error.message, "error");
+      return;
+    }
+    setEmployees(employees.filter((e) => e.id !== id));
   }
+
+  if (loading) return <><Topbar title="Çalışanlar" subtitle="Yükleniyor..." /><main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main></>;
 
   return (
     <>
-      <Topbar title="Çalışanlar" subtitle="Rol, çalışma saatleri, izin günleri ve randevu görünürlüğü." />
+      <Topbar title="Çalışanlar" subtitle="Ekibinizi yönetin, roller atayın." />
       <main className="grid gap-5 p-4 md:p-8">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[var(--muted)]">{employees.filter((e) => e.active).length} aktif çalışan</p>
+          <p className="text-sm text-[var(--muted)]">{employees.length} çalışan</p>
           <Button onClick={() => setShowModal(true)}><Plus size={18} /> Çalışan ekle</Button>
         </div>
 
@@ -52,57 +82,31 @@ export default function EmployeesPage() {
           <EmptyState
             icon={Users}
             title="Henüz çalışan eklenmemiş"
-            description="Ekibinizdeki kişileri ekleyin. Her çalışan kendi randevularını ve takvimini görebilir."
+            description="Ekibinizi ekleyin, randevu atamaları yapabilin."
           >
             <Button onClick={() => setShowModal(true)}><Plus size={18} /> İlk çalışanı ekle</Button>
           </EmptyState>
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {employees.map((employee, index) => (
-              <article
-                key={employee.id}
-                className={`glass animate-fade-in rounded-xl p-5 transition-all duration-200 hover:shadow-lg stagger-${Math.min(index + 1, 4)}`}
-              >
-                <div className="flex items-center justify-between gap-3">
+            {employees.map((emp, i) => (
+              <article key={emp.id} className={`glass animate-fade-in rounded-xl p-5 stagger-${Math.min(i + 1, 4)}`}>
+                <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-950 text-sm font-bold text-white shadow-lg dark:from-white dark:to-neutral-200 dark:text-neutral-950">
-                      {initials(employee.name)}
-                    </span>
-                    <span>
-                      <strong className="block">{employee.name}</strong>
-                      <small className="text-[var(--muted)]">{employee.role}</small>
-                    </span>
+                    <span className="flex size-11 items-center justify-center rounded-lg bg-gradient-to-br from-neutral-800 to-neutral-950 text-sm font-bold text-white dark:from-white dark:to-neutral-200 dark:text-neutral-950">{initials(emp.full_name)}</span>
+                    <div>
+                      <strong className="block">{emp.full_name}</strong>
+                      <small className="text-[var(--muted)]">{emp.title || "Personel"}</small>
+                    </div>
                   </div>
-                  <button onClick={() => toggleActive(employee.id)}>
-                    <Badge variant={employee.active ? "success" : "default"}>
-                      {employee.active ? "Aktif" : "Pasif"}
-                    </Badge>
+                  <button onClick={() => removeEmployee(emp.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
+                    <Trash2 size={14} />
                   </button>
                 </div>
-
-                <div className="mt-5 grid gap-2">
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-2.5 text-sm">
-                    <span className="flex items-center gap-2 text-[var(--muted)]"><Clock size={15} /> Çalışma saati</span>
-                    <strong>09:00 - 18:00</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-2.5 text-sm">
-                    <span className="flex items-center gap-2 text-[var(--muted)]"><CalendarDays size={15} /> Bugün</span>
-                    <strong>{employee.appointmentsToday} randevu</strong>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-2.5 text-sm">
-                    <span className="flex items-center gap-2 text-[var(--muted)]"><CalendarOff size={15} /> İzin</span>
-                    <span className="text-[var(--muted)]">Yok</span>
-                  </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <Badge variant={emp.active ? "success" : "default"}>{emp.active ? "Aktif" : "Pasif"}</Badge>
+                  <Badge>{emp.role === "admin" ? "Admin" : "Personel"}</Badge>
                 </div>
-
-                <div className="mt-4 flex gap-2">
-                  <Button variant="secondary" className="flex-1 text-xs">
-                    <CalendarDays size={14} /> Takvim
-                  </Button>
-                  <Button variant="ghost" className="text-xs text-red-600">
-                    <UserMinus size={14} />
-                  </Button>
-                </div>
+                {emp.phone && <p className="mt-2 text-xs text-[var(--muted)]">{emp.phone}</p>}
               </article>
             ))}
           </section>
@@ -112,40 +116,31 @@ export default function EmployeesPage() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Yeni çalışan ekle">
         <div className="grid gap-4">
           <div>
-            <label className="text-sm font-semibold">Ad soyad</label>
-            <input
-              className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-              placeholder="Örn: Ece Arslan"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
+            <label className="text-sm font-semibold">Ad Soyad</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Örn: Ece Arslan" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           </div>
           <div>
-            <label className="text-sm font-semibold">Rol / Uzmanlık</label>
-            <input
-              className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-              placeholder="Örn: Uzman stilist"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-            />
+            <label className="text-sm font-semibold">Ünvan</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Örn: Uzman Stilist" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           </div>
-          <div>
-            <label className="text-sm font-semibold">Çalışma saatleri</label>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {workingHoursPresets.map((preset) => (
-                <button
-                  key={preset.value}
-                  onClick={() => setForm({ ...form, workHours: preset.value })}
-                  className={`rounded-lg border p-2.5 text-xs font-semibold transition ${form.workHours === preset.value ? "border-teal-600 bg-teal-500/10 text-teal-700 dark:text-teal-200" : "border-[var(--line)] bg-[var(--panel-strong)] text-[var(--muted)]"}`}
-                >
-                  {preset.label}
-                  <br />
-                  <span className="font-normal">{preset.value}</span>
-                </button>
-              ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold">Telefon</label>
+              <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="+90 5xx" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">E-posta</label>
+              <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
           </div>
-          <Button onClick={handleAdd} disabled={!form.name.trim()} className="mt-2">
+          <div>
+            <label className="text-sm font-semibold">Rol</label>
+            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+              <option value="employee">Personel</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <Button onClick={handleAdd} disabled={!form.full_name.trim()} className="mt-2">
             <Plus size={18} /> Çalışan ekle
           </Button>
         </div>

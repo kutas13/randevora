@@ -1,128 +1,106 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, Check, Clock, Filter, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarClock, Plus } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { appointments as initialAppointments } from "@/lib/mock-data";
 import { formatMoney } from "@/lib/utils";
-import type { Appointment, AppointmentStatus } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
 
-const statusConfig: Record<AppointmentStatus, { label: string; variant: "success" | "warning" | "danger" | "info" | "default" }> = {
-  pending: { label: "Onay bekliyor", variant: "warning" },
-  confirmed: { label: "Onaylandı", variant: "success" },
-  completed: { label: "Tamamlandı", variant: "info" },
-  cancelled: { label: "İptal", variant: "danger" },
-  no_show: { label: "Gelmedi", variant: "default" },
+type Appointment = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  price_cents: number;
+  notes: string | null;
+  customer: { full_name: string; phone: string } | null;
+  employee: { full_name: string } | null;
+  service: { name: string; color: string } | null;
 };
 
-const filterTabs: { label: string; value: AppointmentStatus | "all" }[] = [
-  { label: "Tümü", value: "all" },
-  { label: "Bekliyor", value: "pending" },
-  { label: "Onaylı", value: "confirmed" },
-  { label: "Tamamlandı", value: "completed" },
-  { label: "İptal", value: "cancelled" },
-];
-
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
-  const [filter, setFilter] = useState<AppointmentStatus | "all">("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const filtered = appointments.filter((a) => {
-    if (filter !== "all" && a.status !== filter) return false;
-    if (searchQuery && !a.customerName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  useEffect(() => { loadAppointments(); }, []);
 
-  function updateStatus(id: string, status: AppointmentStatus) {
-    setAppointments(appointments.map((a) => (a.id === id ? { ...a, status } : a)));
+  async function loadAppointments() {
+    const { data } = await supabase
+      .from("appointments")
+      .select("*, customer:customers(full_name, phone), employee:employees(full_name), service:services(name, color)")
+      .order("starts_at", { ascending: false })
+      .limit(50);
+
+    setAppointments(data || []);
+    setLoading(false);
   }
+
+  async function updateStatus(id: string, status: string) {
+    await supabase.from("appointments").update({ status }).eq("id", id);
+    setAppointments(appointments.map((a) => a.id === id ? { ...a, status } : a));
+  }
+
+  if (loading) return <><Topbar title="Randevular" subtitle="Yükleniyor..." /><main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main></>;
+
+  const statusLabel: Record<string, string> = {
+    pending: "Bekliyor",
+    confirmed: "Onaylandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal",
+    no_show: "Gelmedi",
+  };
+
+  const statusVariant: Record<string, "warning" | "success" | "info" | "danger" | "default"> = {
+    pending: "warning",
+    confirmed: "success",
+    completed: "info",
+    cancelled: "danger",
+    no_show: "default",
+  };
 
   return (
     <>
-      <Topbar title="Randevular" subtitle="Çakışma kontrolü, bildirim akışı ve durum yönetimi." />
+      <Topbar title="Randevular" subtitle="Tüm randevuları görüntüle ve yönet." />
       <main className="grid gap-5 p-4 md:p-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="inline-flex overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-1">
-            {filterTabs.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setFilter(tab.value)}
-                className={`whitespace-nowrap rounded-md px-3 py-2 text-xs font-semibold transition ${filter === tab.value ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <label className="flex h-10 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm">
-            <Search size={16} className="text-[var(--muted)]" />
-            <input
-              className="w-full bg-transparent outline-none"
-              placeholder="Müşteri ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </label>
-        </div>
-
-        {filtered.length === 0 ? (
+        {appointments.length === 0 ? (
           <EmptyState
-            icon={Calendar}
-            title="Randevu bulunamadı"
-            description="Seçili filtrelerinize uygun randevu yok. Filtreleri değiştirin veya yeni randevu oluşturun."
+            icon={CalendarClock}
+            title="Henüz randevu yok"
+            description="Müşterileriniz online booking sayfanızdan randevu oluşturabilir."
           />
         ) : (
-          <div className="grid gap-3">
-            {filtered.map((appointment, index) => {
-              const config = statusConfig[appointment.status];
-              return (
-                <article
-                  key={appointment.id}
-                  className={`glass animate-fade-in grid items-center gap-4 rounded-xl p-4 transition-all duration-200 hover:shadow-md lg:grid-cols-[0.6fr_1fr_1fr_0.5fr_0.6fr_auto] stagger-${Math.min(index + 1, 4)}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-[var(--muted)]" />
-                    <strong className="text-sm">{appointment.startsAt} - {appointment.endsAt}</strong>
+          <section className="grid gap-3">
+            {appointments.map((apt) => (
+              <article key={apt.id} className="glass flex flex-col gap-3 rounded-xl p-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center rounded-lg bg-[var(--panel-strong)] px-3 py-2 text-center">
+                    <span className="text-xs text-[var(--muted)]">{new Date(apt.starts_at).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
+                    <strong className="text-sm">{new Date(apt.starts_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</strong>
                   </div>
                   <div>
-                    <strong className="block text-sm">{appointment.customerName}</strong>
-                    <small className="text-[var(--muted)]">{appointment.customerPhone}</small>
+                    <strong className="block">{apt.customer?.full_name || "Bilinmiyor"}</strong>
+                    <small className="text-[var(--muted)]">
+                      {apt.service?.name || "Hizmet"} · {apt.employee?.full_name || "Atanmamış"}
+                    </small>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="size-2.5 rounded-full" style={{ background: appointment.color }} />
-                    <span className="text-[var(--muted)]">{appointment.serviceName} · {appointment.employeeName}</span>
-                  </div>
-                  <strong className="text-sm">{formatMoney(appointment.price)}</strong>
-                  <Badge variant={config.variant}>{config.label}</Badge>
-                  <div className="flex gap-1.5">
-                    {appointment.status === "pending" && (
-                      <Button
-                        variant="secondary"
-                        className="size-8 px-0"
-                        aria-label="Onayla"
-                        onClick={() => updateStatus(appointment.id, "confirmed")}
-                      >
-                        <Check size={15} />
-                      </Button>
-                    )}
-                    {(appointment.status === "pending" || appointment.status === "confirmed") && (
-                      <Button
-                        variant="danger"
-                        className="size-8 px-0"
-                        aria-label="İptal et"
-                        onClick={() => updateStatus(appointment.id, "cancelled")}
-                      >
-                        <X size={15} />
-                      </Button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {apt.price_cents > 0 && <span className="text-sm font-bold">{formatMoney(apt.price_cents)}</span>}
+                  <Badge variant={statusVariant[apt.status] || "default"}>{statusLabel[apt.status] || apt.status}</Badge>
+                  {apt.status === "pending" && (
+                    <>
+                      <Button variant="primary" className="h-7 text-xs" onClick={() => updateStatus(apt.id, "confirmed")}>Onayla</Button>
+                      <Button variant="danger" className="h-7 text-xs" onClick={() => updateStatus(apt.id, "cancelled")}>İptal</Button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
+          </section>
         )}
       </main>
     </>

@@ -1,42 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Palette, Plus, Power, Timer, Trash2 } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { services as initialServices } from "@/lib/mock-data";
 import { formatMoney } from "@/lib/utils";
-import type { Service } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
+
+type Service = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_cents: number;
+  color: string;
+  active: boolean;
+};
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>(initialServices);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e" });
+  const supabase = createClient();
+  const { toast } = useToast();
 
-  function handleAdd() {
-    const newService: Service = {
-      id: `srv_${Date.now()}`,
-      name: form.name,
-      duration: Number(form.duration),
-      price: Number(form.price),
-      active: true,
-      color: form.color,
-    };
-    setServices([...services, newService]);
-    setForm({ name: "", duration: "45", price: "700", color: "#0f766e" });
-    setShowModal(false);
+  useEffect(() => { loadServices(); }, []);
+
+  async function loadServices() {
+    const { data } = await supabase.from("services").select("*").order("created_at", { ascending: false });
+    setServices(data || []);
+    setLoading(false);
   }
 
-  function toggleActive(id: string) {
+  async function handleAdd() {
+    const { error } = await supabase.from("services").insert({
+      name: form.name,
+      duration_minutes: Number(form.duration),
+      price_cents: Number(form.price) * 100,
+      color: form.color,
+      business_id: (await supabase.auth.getUser()).data.user?.user_metadata?.business_id,
+    });
+
+    if (error) {
+      toast("Hizmet eklenemedi: " + error.message, "error");
+      return;
+    }
+
+    toast("Hizmet eklendi!", "success");
+    setForm({ name: "", duration: "45", price: "700", color: "#0f766e" });
+    setShowModal(false);
+    loadServices();
+  }
+
+  async function toggleActive(id: string, current: boolean) {
+    await supabase.from("services").update({ active: !current }).eq("id", id);
     setServices(services.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
   }
 
-  function removeService(id: string) {
+  async function removeService(id: string) {
+    const { error } = await supabase.from("services").delete().eq("id", id);
+    if (error) {
+      toast("Silinemedi: " + error.message, "error");
+      return;
+    }
     setServices(services.filter((s) => s.id !== id));
   }
+
+  if (loading) return <><Topbar title="Hizmetler" subtitle="Yükleniyor..." /><main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main></>;
 
   return (
     <>
@@ -65,27 +99,21 @@ export default function ServicesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <span className="size-4 rounded-full shadow-sm" style={{ background: service.color }} />
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleActive(service.id)}
-                      className="transition-transform hover:scale-110"
-                    >
+                    <button onClick={() => toggleActive(service.id, service.active)} className="transition-transform hover:scale-110">
                       <Badge variant={service.active ? "success" : "default"}>
                         <Power size={12} />
                         {service.active ? "Aktif" : "Pasif"}
                       </Badge>
                     </button>
-                    <button
-                      onClick={() => removeService(service.id)}
-                      className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10"
-                    >
+                    <button onClick={() => removeService(service.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
                       <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
                 <h2 className="mt-5 text-xl font-bold">{service.name}</h2>
                 <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
-                  <span className="inline-flex items-center gap-2"><Timer size={16} /> {service.duration} dk</span>
-                  <strong className="text-lg text-[var(--foreground)]">{formatMoney(service.price)}</strong>
+                  <span className="inline-flex items-center gap-2"><Timer size={16} /> {service.duration_minutes} dk</span>
+                  <strong className="text-lg text-[var(--foreground)]">{formatMoney(service.price_cents)}</strong>
                 </div>
               </article>
             ))}
@@ -97,43 +125,23 @@ export default function ServicesPage() {
         <div className="grid gap-4">
           <div>
             <label className="text-sm font-semibold">Hizmet adı</label>
-            <input
-              className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-              placeholder="Örn: Saç Kesimi"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Örn: Saç Kesimi" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-semibold">Süre (dk)</label>
-              <input
-                type="number"
-                className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: e.target.value })}
-              />
+              <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
             </div>
             <div>
               <label className="text-sm font-semibold">Fiyat (TL)</label>
-              <input
-                type="number"
-                className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-              />
+              <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
             </div>
           </div>
           <div>
             <label className="text-sm font-semibold">Renk</label>
             <div className="mt-2 flex gap-2">
               {["#0f766e", "#f97316", "#7c3aed", "#2563eb", "#dc2626", "#0891b2"].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setForm({ ...form, color: c })}
-                  className={`size-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`}
-                  style={{ background: c }}
-                />
+                <button key={c} onClick={() => setForm({ ...form, color: c })} className={`size-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`} style={{ background: c }} />
               ))}
             </div>
           </div>
