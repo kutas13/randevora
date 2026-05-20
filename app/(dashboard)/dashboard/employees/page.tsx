@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { initials } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { useBusinessId } from "@/lib/hooks/use-business";
 
 type Employee = {
   id: string;
@@ -26,6 +27,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ full_name: "", title: "", phone: "", email: "", role: "employee" });
+  const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
 
@@ -38,13 +40,14 @@ export default function EmployeesPage() {
   }
 
   async function handleAdd() {
+    if (!businessId) { toast("İşletme bilgisi bulunamadı.", "error"); return; }
     const { error } = await supabase.from("employees").insert({
       full_name: form.full_name,
       title: form.title || null,
       phone: form.phone || null,
       email: form.email || null,
       role: form.role,
-      business_id: (await supabase.auth.getUser()).data.user?.user_metadata?.business_id,
+      business_id: businessId,
     });
 
     if (error) {

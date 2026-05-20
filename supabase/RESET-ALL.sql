@@ -94,6 +94,7 @@ CREATE TABLE public.services (
   name text NOT NULL,
   duration_minutes integer NOT NULL CHECK (duration_minutes > 0),
   price_cents integer NOT NULL DEFAULT 0 CHECK (price_cents >= 0),
+  price_variable boolean NOT NULL DEFAULT false,
   color text NOT NULL DEFAULT '#0f766e',
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()

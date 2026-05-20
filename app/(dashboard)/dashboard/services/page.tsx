@@ -10,12 +10,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatMoney } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { useBusinessId } from "@/lib/hooks/use-business";
 
 type Service = {
   id: string;
   name: string;
   duration_minutes: number;
   price_cents: number;
+  price_variable: boolean;
   color: string;
   active: boolean;
 };
@@ -24,7 +26,8 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e" });
+  const [form, setForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
+  const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
 
@@ -37,12 +40,18 @@ export default function ServicesPage() {
   }
 
   async function handleAdd() {
+    if (!businessId) {
+      toast("İşletme bilgisi bulunamadı.", "error");
+      return;
+    }
+
     const { error } = await supabase.from("services").insert({
       name: form.name,
       duration_minutes: Number(form.duration),
       price_cents: Number(form.price) * 100,
+      price_variable: form.priceVariable,
       color: form.color,
-      business_id: (await supabase.auth.getUser()).data.user?.user_metadata?.business_id,
+      business_id: businessId,
     });
 
     if (error) {
@@ -51,7 +60,7 @@ export default function ServicesPage() {
     }
 
     toast("Hizmet eklendi!", "success");
-    setForm({ name: "", duration: "45", price: "700", color: "#0f766e" });
+    setForm({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
     setShowModal(false);
     loadServices();
   }
@@ -113,7 +122,12 @@ export default function ServicesPage() {
                 <h2 className="mt-5 text-xl font-bold">{service.name}</h2>
                 <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
                   <span className="inline-flex items-center gap-2"><Timer size={16} /> {service.duration_minutes} dk</span>
-                  <strong className="text-lg text-[var(--foreground)]">{formatMoney(service.price_cents)}</strong>
+                  <div className="text-right">
+                    <strong className="text-lg text-[var(--foreground)]">{formatMoney(service.price_cents)}</strong>
+                    {service.price_variable && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400">Değişkenlik gösterebilir</p>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}
@@ -137,6 +151,15 @@ export default function ServicesPage() {
               <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
             </div>
           </div>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3 transition hover:border-[var(--accent)]">
+            <input
+              type="checkbox"
+              checked={form.priceVariable}
+              onChange={(e) => setForm({ ...form, priceVariable: e.target.checked })}
+              className="size-4 rounded accent-teal-600"
+            />
+            <span className="text-sm font-medium">Fiyat değişkenlik gösterebilir</span>
+          </label>
           <div>
             <label className="text-sm font-semibold">Renk</label>
             <div className="mt-2 flex gap-2">
