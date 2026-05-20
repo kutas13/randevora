@@ -21,9 +21,30 @@ const stats = [
   { value: "4.9", label: "Kullanıcı puanı" },
 ];
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Randevora",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: "https://randevora.com.tr",
+  description: "İşletmeler için online randevu yönetim sistemi",
+  offers: {
+    "@type": "Offer",
+    price: "999",
+    priceCurrency: "TRY",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.9",
+    ratingCount: "248",
+  },
+};
+
 export default function HomePage() {
   return (
     <main className="overflow-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
       <section className="relative min-h-screen px-4 py-5">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
