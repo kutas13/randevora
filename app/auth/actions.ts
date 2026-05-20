@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -34,20 +35,32 @@ export async function loginAction(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  // Kullanıcı rolünü kontrol et
-  const { data: user, error: userError } = await supabase
+  // Admin client ile sorgula (RLS bypass)
+  const admin = createAdminClient();
+
+  const { data: user } = await admin
     .from("users")
     .select("role, business_id")
     .eq("id", data.user.id)
     .single();
 
-  // Profil yoksa metadata'dan oluşturmayı dene
-  if (userError || !user) {
+  // Profil yoksa oluştur
+  if (!user) {
     const meta = data.user.user_metadata;
-    if (meta?.role === "super_admin") {
+    const role = meta?.role === "super_admin" ? "super_admin" : "owner";
+
+    await admin.from("users").upsert({
+      id: data.user.id,
+      role,
+      full_name: meta?.full_name || meta?.business_name || "User",
+      email: data.user.email,
+      business_id: null,
+    });
+
+    if (role === "super_admin") {
       redirect("/super-admin");
     }
-    redirect(`/login?error=${encodeURIComponent("Kullanıcı profili bulunamadı. /api/setup adresini ziyaret edin.")}`);
+    redirect("/dashboard");
   }
 
   // Super admin direkt panele
@@ -57,7 +70,7 @@ export async function loginAction(formData: FormData) {
 
   // İşletme onay durumunu kontrol et
   if (user.business_id) {
-    const { data: business } = await supabase
+    const { data: business } = await admin
       .from("businesses")
       .select("status")
       .eq("id", user.business_id)
@@ -91,10 +104,10 @@ export async function registerAction(formData: FormData) {
     category: formData.get("category") || "small_business",
   });
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   // Slug benzersizliğini kontrol et
-  const { data: existingBusiness } = await supabase
+  const { data: existingBusiness } = await admin
     .from("businesses")
     .select("id")
     .eq("slug", values.slug)
@@ -103,6 +116,8 @@ export async function registerAction(formData: FormData) {
   if (existingBusiness) {
     redirect(`/register?error=${encodeURIComponent("Bu slug zaten kullanımda. Başka bir slug deneyin.")}`);
   }
+
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({
     email: values.email,
