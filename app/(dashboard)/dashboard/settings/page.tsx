@@ -114,7 +114,7 @@ export default function SettingsPage() {
               ends_at: closeTime + ":00",
             };
           })
-          .filter(Boolean);
+          .filter((r): r is NonNullable<typeof r> => r !== null);
 
         if (rows.length > 0) {
           await supabase.from("working_hours").insert(rows);
