@@ -4,9 +4,12 @@
 
 -- Önce mevcut tabloları ve tipleri temizle
 drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user();
-drop function if exists public.current_business_id();
-drop function if exists public.is_super_admin();
+drop function if exists public.handle_new_user() cascade;
+drop function if exists public.current_business_id() cascade;
+drop function if exists public.is_super_admin() cascade;
+drop function if exists public.get_user_role() cascade;
+drop function if exists public.approve_business(uuid) cascade;
+drop function if exists public.reject_business(uuid) cascade;
 
 drop table if exists public.notifications cascade;
 drop table if exists public.blocked_dates cascade;
