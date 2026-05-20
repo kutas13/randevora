@@ -350,7 +350,7 @@ $$;
 
 create or replace function public.reject_business(business_id uuid)
 returns void
-language definer
+language plpgsql
 security definer
 set search_path = public
 as $$
