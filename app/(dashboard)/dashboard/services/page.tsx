@@ -29,8 +29,8 @@ export default function ServicesPage() {
   const [editModal, setEditModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
-  const [editForm, setEditForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false, active: true });
+  const [form, setForm] = useState({ name: "", duration: "45", durationUnit: "dk", price: "700", color: "#0f766e", priceVariable: false });
+  const [editForm, setEditForm] = useState({ name: "", duration: "45", durationUnit: "dk", price: "700", color: "#0f766e", priceVariable: false, active: true });
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
@@ -47,9 +47,11 @@ export default function ServicesPage() {
     if (!businessId) { toast("İşletme bilgisi bulunamadı.", "error"); return; }
     setSubmitting(true);
 
+    const durationMinutes = form.durationUnit === "saat" ? Number(form.duration) * 60 : Number(form.duration);
+
     const { error } = await supabase.from("services").insert({
       name: form.name,
-      duration_minutes: Number(form.duration),
+      duration_minutes: durationMinutes,
       price_cents: Number(form.price),
       price_variable: form.priceVariable,
       color: form.color,
@@ -59,7 +61,7 @@ export default function ServicesPage() {
     if (error) { toast("Hizmet eklenemedi: " + error.message, "error"); }
     else {
       toast("Hizmet eklendi!", "success");
-      setForm({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
+      setForm({ name: "", duration: "45", durationUnit: "dk", price: "700", color: "#0f766e", priceVariable: false });
       setShowModal(false);
       loadServices();
     }
@@ -68,9 +70,11 @@ export default function ServicesPage() {
 
   function openEdit(service: Service) {
     setEditingService(service);
+    const isHours = service.duration_minutes >= 60 && service.duration_minutes % 60 === 0;
     setEditForm({
       name: service.name,
-      duration: String(service.duration_minutes),
+      duration: isHours ? String(service.duration_minutes / 60) : String(service.duration_minutes),
+      durationUnit: isHours ? "saat" : "dk",
       price: String(service.price_cents),
       color: service.color,
       priceVariable: service.price_variable,
@@ -83,9 +87,11 @@ export default function ServicesPage() {
     if (!editingService) return;
     setSubmitting(true);
 
+    const editDurationMinutes = editForm.durationUnit === "saat" ? Number(editForm.duration) * 60 : Number(editForm.duration);
+
     const { error } = await supabase.from("services").update({
       name: editForm.name,
-      duration_minutes: Number(editForm.duration),
+      duration_minutes: editDurationMinutes,
       price_cents: Number(editForm.price),
       price_variable: editForm.priceVariable,
       color: editForm.color,
@@ -149,7 +155,7 @@ export default function ServicesPage() {
                 </div>
                 <h2 className="mt-5 text-xl font-bold">{service.name}</h2>
                 <div className="mt-4 flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
-                  <span className="inline-flex items-center gap-2"><Timer size={16} /> {service.duration_minutes} dk</span>
+                  <span className="inline-flex items-center gap-2"><Timer size={16} /> {service.duration_minutes >= 60 ? `${service.duration_minutes / 60} saat` : `${service.duration_minutes} dk`}</span>
                   <div className="text-right">
                     <strong className="text-lg text-[var(--foreground)]">{formatMoney(service.price_cents)}</strong>
                     {service.price_variable && (
@@ -170,10 +176,17 @@ export default function ServicesPage() {
             <label className="text-sm font-semibold">Hizmet adı</label>
             <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Örn: Saç Kesimi" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-semibold">Süre (dk)</label>
+              <label className="text-sm font-semibold">Süre</label>
               <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Birim</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.durationUnit} onChange={(e) => setForm({ ...form, durationUnit: e.target.value })}>
+                <option value="dk">Dakika</option>
+                <option value="saat">Saat</option>
+              </select>
             </div>
             <div>
               <label className="text-sm font-semibold">Fiyat (TL)</label>
@@ -205,10 +218,17 @@ export default function ServicesPage() {
             <label className="text-sm font-semibold">Hizmet adı</label>
             <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-semibold">Süre (dk)</label>
+              <label className="text-sm font-semibold">Süre</label>
               <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Birim</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.durationUnit} onChange={(e) => setEditForm({ ...editForm, durationUnit: e.target.value })}>
+                <option value="dk">Dakika</option>
+                <option value="saat">Saat</option>
+              </select>
             </div>
             <div>
               <label className="text-sm font-semibold">Fiyat (TL)</label>
