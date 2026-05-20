@@ -244,6 +244,9 @@ export default function HomePage() {
             <Link href="/dashboard" className="hover:text-[var(--foreground)]">Panel</Link>
           </div>
         </div>
+        <div className="mx-auto mt-4 max-w-7xl border-t border-[var(--line)] pt-4 text-center text-xs text-[var(--muted)]">
+          Meridyen Yazılım Teknoloji Ticaret Ltd. Şti.
+        </div>
       </footer>
     </main>
   );
