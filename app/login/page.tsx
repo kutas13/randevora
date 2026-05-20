@@ -10,7 +10,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="grid min-h-screen place-items-center px-4 py-10">
       <section className="glass animate-in w-full max-w-md rounded-xl p-7">
         <Link href="/" className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-emerald-600 font-black text-white shadow-lg shadow-teal-600/25">R</span>
+          <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
           <strong>randevora</strong>
         </Link>
 

@@ -36,9 +36,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
     <main className="min-h-screen bg-gradient-to-b from-[var(--panel)] to-[var(--background)] px-4 py-8">
       <div className="mx-auto max-w-lg">
         <div className="mb-8 text-center">
-          <span className="inline-flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 text-xl font-black text-white shadow-lg shadow-teal-600/25">
-            {business.name.charAt(0)}
-          </span>
+          <img src="/logo.png" alt="Randevora" className="size-14 rounded-xl object-cover shadow-lg" />
           <h1 className="mt-4 text-3xl font-black">{business.name}</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">{business.category} · Online randevu al</p>
         </div>

@@ -50,7 +50,7 @@ export default function ServicesPage() {
     const { error } = await supabase.from("services").insert({
       name: form.name,
       duration_minutes: Number(form.duration),
-      price_cents: Number(form.price) * 100,
+      price_cents: Number(form.price),
       price_variable: form.priceVariable,
       color: form.color,
       business_id: businessId,
@@ -71,7 +71,7 @@ export default function ServicesPage() {
     setEditForm({
       name: service.name,
       duration: String(service.duration_minutes),
-      price: String(service.price_cents / 100),
+      price: String(service.price_cents),
       color: service.color,
       priceVariable: service.price_variable,
       active: service.active,
@@ -86,7 +86,7 @@ export default function ServicesPage() {
     const { error } = await supabase.from("services").update({
       name: editForm.name,
       duration_minutes: Number(editForm.duration),
-      price_cents: Number(editForm.price) * 100,
+      price_cents: Number(editForm.price),
       price_variable: editForm.priceVariable,
       color: editForm.color,
       active: editForm.active,

@@ -30,7 +30,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
       <div className="grid w-full max-w-4xl gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div className="hidden lg:block">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-emerald-600 font-black text-white shadow-lg shadow-teal-600/25">R</span>
+            <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
             <strong>randevora</strong>
           </Link>
           <h2 className="mt-8 text-3xl font-black">İşletmenizi dijitalleştirin</h2>

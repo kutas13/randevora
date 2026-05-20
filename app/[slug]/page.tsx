@@ -13,7 +13,7 @@ export default async function BusinessSlugPage({ params }: { params: Promise<{ s
       <div className="mx-auto max-w-6xl">
         <nav className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-emerald-600 font-black text-white shadow-lg shadow-teal-600/25">R</span>
+            <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
             <strong>randevora</strong>
           </Link>
           <Link href={`/book/${slug}`}>

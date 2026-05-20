@@ -9,7 +9,7 @@ const days = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 type CalendarAppointment = {
   id: string;
   starts_at: string;
-  customer: { full_name: string } | null;
+  customer: { full_name: string; phone?: string } | null;
   service: { name: string; color: string } | null;
 };
 
@@ -28,7 +28,7 @@ export function CalendarBoard() {
 
       const { data } = await supabase
         .from("appointments")
-        .select("id, starts_at, customer:customers(full_name), service:services(name, color)")
+        .select("id, starts_at, customer:customers(full_name, phone), service:services(name, color)")
         .gte("starts_at", startOfWeek.toISOString())
         .lt("starts_at", endOfWeek.toISOString())
         .in("status", ["pending", "confirmed"]);
@@ -76,6 +76,7 @@ export function CalendarBoard() {
                     >
                       <strong className="block text-[var(--foreground)]">{apt.customer?.full_name || "Müşteri"}</strong>
                       <span className="text-[var(--muted)]">{apt.service?.name || "Hizmet"}</span>
+                      {apt.customer?.phone && <span className="block text-[var(--muted)]">{apt.customer.phone}</span>}
                     </div>
                   ))}
                 </div>

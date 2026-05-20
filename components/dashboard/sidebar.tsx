@@ -70,7 +70,7 @@ function NavItems({ active, role, onNavigate }: { active: string; role: UserRole
 function SidebarHeader({ businessName }: { businessName: string }) {
   return (
     <Link href="/" className="flex items-center gap-3 px-2">
-      <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-emerald-600 text-sm font-black text-white shadow-lg shadow-teal-600/25">R</span>
+      <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
       <span>
         <strong className="block text-base">randevora</strong>
         <small className="text-[var(--muted)]">{businessName}</small>

@@ -9,7 +9,7 @@ type DayAppointment = {
   id: string;
   starts_at: string;
   ends_at: string;
-  customer: { full_name: string } | null;
+  customer: { full_name: string; phone?: string } | null;
   employee: { full_name: string } | null;
   service: { name: string; color: string } | null;
 };
@@ -27,7 +27,7 @@ export function DailyView({ date }: { date: Date }) {
 
       const { data } = await supabase
         .from("appointments")
-        .select("id, starts_at, ends_at, customer:customers(full_name), employee:employees(full_name), service:services(name, color)")
+        .select("id, starts_at, ends_at, customer:customers(full_name, phone), employee:employees(full_name), service:services(name, color)")
         .gte("starts_at", start.toISOString())
         .lte("starts_at", end.toISOString())
         .in("status", ["pending", "confirmed"])
@@ -74,6 +74,7 @@ export function DailyView({ date }: { date: Date }) {
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-[var(--muted)]">{apt.service?.name || "Hizmet"} · {apt.employee?.full_name || "Atanmamış"}</p>
+                    {apt.customer?.phone && <p className="text-xs text-[var(--muted)]">{apt.customer.phone}</p>}
                   </div>
                 ))}
               </div>
