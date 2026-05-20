@@ -155,31 +155,25 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     const startsAt = new Date(`${date}T${time}`);
     const endsAt = new Date(startsAt.getTime() + (selectedService?.duration_minutes || 30) * 60 * 1000);
 
-    const { data: customer, error: custErr } = await supabase
-      .from("customers")
-      .upsert({ full_name: name, phone, business_id: businessId }, { onConflict: "business_id,phone" })
-      .select("id")
-      .single();
-
-    if (custErr || !customer) {
-      setError("Müşteri kaydı oluşturulamadı.");
-      setSubmitting(false);
-      return;
-    }
-
-    const { error: aptErr } = await supabase.from("appointments").insert({
-      business_id: businessId,
-      customer_id: customer.id,
-      service_id: selectedService!.id,
-      employee_id: selectedEmployee || fixedEmployeeId,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      price_cents: selectedService!.price_cents,
-      status: "pending",
+    const res = await fetch("/api/public-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessId,
+        name: name.trim(),
+        phone: phone.trim(),
+        serviceId: selectedService!.id,
+        employeeId: selectedEmployee || fixedEmployeeId,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        priceCents: selectedService!.price_cents,
+      }),
     });
 
-    if (aptErr) {
-      setError("Randevu oluşturulamadı: " + aptErr.message);
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Randevu oluşturulamadı.");
       setSubmitting(false);
       return;
     }
