@@ -1,89 +1,86 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
-import { appointments } from "@/lib/mock-data";
+import React, { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const hours = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 const days = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
-function AppointmentCard({ id, label, color }: { id: string; label: string; color: string }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id });
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        borderLeftColor: color,
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-      }}
-      {...listeners}
-      {...attributes}
-      className="cursor-grab rounded-lg border border-[var(--line)] border-l-4 bg-[var(--panel-strong)] p-2 text-xs shadow-sm active:cursor-grabbing"
-    >
-      <strong className="block text-[var(--foreground)]">{label}</strong>
-      <span className="text-[var(--muted)]">Sürükle bırak hazır</span>
-    </div>
-  );
-}
-
-function Slot({ id, children }: { id: string; children?: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div ref={setNodeRef} className={`min-h-20 border-b border-r border-[var(--line)] p-2 transition ${isOver ? "bg-teal-500/10" : ""}`}>
-      {children}
-    </div>
-  );
-}
+type CalendarAppointment = {
+  id: string;
+  starts_at: string;
+  customer: { full_name: string } | null;
+  service: { name: string; color: string } | null;
+};
 
 export function CalendarBoard() {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-  const initial = useMemo(
-    () => ({
-      apt_1: "Pzt-09:00",
-      apt_2: "Sal-10:00",
-      apt_3: "Çar-13:00",
-    }),
-    [],
-  );
-  const [positions, setPositions] = useState<Record<string, string>>(initial);
+  const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
+  const supabase = createClient();
 
-  function onDragEnd(event: DragEndEvent) {
-    if (!event.over) return;
-    setPositions((current) => ({ ...current, [String(event.active.id)]: String(event.over?.id) }));
+  useEffect(() => {
+    async function load() {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+      const { data } = await supabase
+        .from("appointments")
+        .select("id, starts_at, customer:customers(full_name), service:services(name, color)")
+        .gte("starts_at", startOfWeek.toISOString())
+        .lt("starts_at", endOfWeek.toISOString())
+        .in("status", ["pending", "confirmed"]);
+
+      setAppointments(data || []);
+    }
+    load();
+  }, []);
+
+  function getSlotAppointments(day: string, hour: string) {
+    return appointments.filter((apt) => {
+      const d = new Date(apt.starts_at);
+      const dayIndex = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      const aptDay = days[dayIndex];
+      const aptHour = `${String(d.getHours()).padStart(2, "0")}:00`;
+      return aptDay === day && aptHour === hour;
+    });
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--panel)]">
-        <div className="grid min-w-[820px] grid-cols-[72px_repeat(7,1fr)]">
-          <div className="border-b border-r border-[var(--line)] p-3 text-xs text-[var(--muted)]">Saat</div>
-          {days.map((day) => (
-            <div key={day} className="border-b border-r border-[var(--line)] p-3 text-sm font-semibold">
-              {day}
-            </div>
-          ))}
-          {hours.map((hour) => (
-            <React.Fragment key={hour}>
-              <div className="border-b border-r border-[var(--line)] p-3 text-xs text-[var(--muted)]">
-                {hour}
-              </div>
-              {days.map((day) => {
-                const slotId = `${day}-${hour}`;
-                const slotAppointments = appointments.filter((appointment) => positions[appointment.id] === slotId);
-                return (
-                  <Slot key={slotId} id={slotId}>
-                    <div className="grid gap-2">
-                      {slotAppointments.map((appointment) => (
-                        <AppointmentCard key={appointment.id} id={appointment.id} label={`${appointment.customerName} · ${appointment.serviceName}`} color={appointment.color} />
-                      ))}
+    <div className="overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--panel)]">
+      <div className="grid min-w-[820px] grid-cols-[72px_repeat(7,1fr)]">
+        <div className="border-b border-r border-[var(--line)] p-3 text-xs text-[var(--muted)]">Saat</div>
+        {days.map((day) => (
+          <div key={day} className="border-b border-r border-[var(--line)] p-3 text-sm font-semibold">{day}</div>
+        ))}
+        {hours.map((hour) => (
+          <React.Fragment key={hour}>
+            <div className="border-b border-r border-[var(--line)] p-3 text-xs text-[var(--muted)]">{hour}</div>
+            {days.map((day) => {
+              const slotApts = getSlotAppointments(day, hour);
+              return (
+                <div key={`${day}-${hour}`} className="min-h-20 border-b border-r border-[var(--line)] p-2">
+                  {slotApts.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="mb-1 rounded-lg border border-[var(--line)] border-l-4 bg-[var(--panel-strong)] p-2 text-xs shadow-sm"
+                      style={{ borderLeftColor: apt.service?.color || "#0f766e" }}
+                    >
+                      <strong className="block text-[var(--foreground)]">{apt.customer?.full_name || "Müşteri"}</strong>
+                      <span className="text-[var(--muted)]">{apt.service?.name || "Hizmet"}</span>
                     </div>
-                  </Slot>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </div>
+                  ))}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
       </div>
-    </DndContext>
+      {appointments.length === 0 && (
+        <div className="p-8 text-center text-sm text-[var(--muted)]">Bu hafta randevu bulunmuyor.</div>
+      )}
+    </div>
   );
 }

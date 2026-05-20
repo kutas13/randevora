@@ -1,14 +1,36 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
-const appointmentDots = [3, 5, 7, 10, 12, 14, 15, 17, 19, 20, 21, 23, 26, 28];
-
 export function MonthlyView({ date }: { date: Date }) {
+  const [appointmentDays, setAppointmentDays] = useState<number[]>([]);
+  const supabase = createClient();
+
   const year = date.getFullYear();
   const month = date.getMonth();
+
+  useEffect(() => {
+    async function load() {
+      const start = new Date(year, month, 1).toISOString();
+      const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+      const { data } = await supabase
+        .from("appointments")
+        .select("starts_at")
+        .gte("starts_at", start)
+        .lte("starts_at", end)
+        .in("status", ["pending", "confirmed"]);
+
+      const days = (data || []).map((a) => new Date(a.starts_at).getDate());
+      setAppointmentDays([...new Set(days)]);
+    }
+    load();
+  }, [year, month]);
+
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startOffset = (firstDay.getDay() + 6) % 7;
@@ -25,15 +47,13 @@ export function MonthlyView({ date }: { date: Date }) {
     <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)]">
       <div className="grid grid-cols-7 border-b border-[var(--line)]">
         {dayNames.map((d) => (
-          <div key={d} className="border-r border-[var(--line)] p-3 text-center text-xs font-semibold text-[var(--muted)] last:border-0">
-            {d}
-          </div>
+          <div key={d} className="border-r border-[var(--line)] p-3 text-center text-xs font-semibold text-[var(--muted)] last:border-0">{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7">
         {cells.map((day, i) => {
           const isToday = isCurrentMonth && day === today.getDate();
-          const hasAppointments = day !== null && appointmentDots.includes(day);
+          const hasAppointments = day !== null && appointmentDays.includes(day);
           return (
             <div
               key={i}
@@ -44,19 +64,10 @@ export function MonthlyView({ date }: { date: Date }) {
             >
               {day !== null && (
                 <>
-                  <span
-                    className={cn(
-                      "inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold",
-                      isToday && "bg-teal-600 text-white",
-                    )}
-                  >
-                    {day}
-                  </span>
+                  <span className={cn("inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold", isToday && "bg-teal-600 text-white")}>{day}</span>
                   {hasAppointments && (
                     <div className="mt-1 flex gap-0.5">
                       <span className="size-1.5 rounded-full bg-teal-600" />
-                      <span className="size-1.5 rounded-full bg-orange-500" />
-                      {day % 3 === 0 && <span className="size-1.5 rounded-full bg-violet-500" />}
                     </div>
                   )}
                 </>

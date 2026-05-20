@@ -49,7 +49,7 @@ export function Topbar({ title, subtitle }: { title: string; subtitle: string })
               </Button>
               {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
             </div>
-            <Link href="/book/nova-studio">
+            <Link href="/dashboard/appointments">
               <Button className="shrink-0">
                 <Plus size={18} />
                 <span className="hidden sm:inline">Randevu</span>

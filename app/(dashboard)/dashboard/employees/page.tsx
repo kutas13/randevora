@@ -26,7 +26,8 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ full_name: "", title: "", phone: "", email: "", role: "employee" });
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ full_name: "", title: "", phone: "", email: "", password: "", role: "employee" });
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
@@ -41,24 +42,41 @@ export default function EmployeesPage() {
 
   async function handleAdd() {
     if (!businessId) { toast("İşletme bilgisi bulunamadı.", "error"); return; }
-    const { error } = await supabase.from("employees").insert({
-      full_name: form.full_name,
-      title: form.title || null,
-      phone: form.phone || null,
-      email: form.email || null,
-      role: form.role,
-      business_id: businessId,
-    });
+    if (!form.email || !form.password) { toast("E-posta ve şifre zorunlu.", "error"); return; }
+    if (form.password.length < 6) { toast("Şifre en az 6 karakter olmalı.", "error"); return; }
 
-    if (error) {
-      toast("Çalışan eklenemedi: " + error.message, "error");
-      return;
+    setSubmitting(true);
+
+    try {
+      // API ile personel hesabı oluştur
+      const res = await fetch("/api/create-employee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: form.full_name,
+          title: form.title || null,
+          phone: form.phone || null,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          business_id: businessId,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast(result.error || "Çalışan eklenemedi.", "error");
+        return;
+      }
+
+      toast("Çalışan eklendi! Artık giriş yapabilir.", "success");
+      setForm({ full_name: "", title: "", phone: "", email: "", password: "", role: "employee" });
+      setShowModal(false);
+      loadEmployees();
+    } finally {
+      setSubmitting(false);
     }
-
-    toast("Çalışan eklendi!", "success");
-    setForm({ full_name: "", title: "", phone: "", email: "", role: "employee" });
-    setShowModal(false);
-    loadEmployees();
   }
 
   async function removeEmployee(id: string) {
@@ -109,7 +127,8 @@ export default function EmployeesPage() {
                   <Badge variant={emp.active ? "success" : "default"}>{emp.active ? "Aktif" : "Pasif"}</Badge>
                   <Badge>{emp.role === "admin" ? "Admin" : "Personel"}</Badge>
                 </div>
-                {emp.phone && <p className="mt-2 text-xs text-[var(--muted)]">{emp.phone}</p>}
+                {emp.email && <p className="mt-2 text-xs text-[var(--muted)]">{emp.email}</p>}
+                {emp.phone && <p className="text-xs text-[var(--muted)]">{emp.phone}</p>}
               </article>
             ))}
           </section>
@@ -128,23 +147,30 @@ export default function EmployeesPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
+              <label className="text-sm font-semibold">E-posta *</label>
+              <input type="email" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="personel@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Şifre *</label>
+              <input type="password" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="En az 6 karakter" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className="text-sm font-semibold">Telefon</label>
               <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="+90 5xx" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
-              <label className="text-sm font-semibold">E-posta</label>
-              <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <label className="text-sm font-semibold">Rol</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="employee">Personel</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
           </div>
-          <div>
-            <label className="text-sm font-semibold">Rol</label>
-            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="employee">Personel</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <Button onClick={handleAdd} disabled={!form.full_name.trim()} className="mt-2">
-            <Plus size={18} /> Çalışan ekle
+          <p className="text-xs text-[var(--muted)]">Personel bu e-posta ve şifreyle giriş yaparak panele erişebilir.</p>
+          <Button onClick={handleAdd} disabled={!form.full_name.trim() || !form.email.trim() || !form.password.trim() || submitting} className="mt-2">
+            <Plus size={18} /> {submitting ? "Oluşturuluyor..." : "Çalışan ekle"}
           </Button>
         </div>
       </Modal>
