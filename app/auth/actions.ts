@@ -10,10 +10,20 @@ const loginSchema = z.object({
   password: z.string().min(6),
 });
 
+function normalizeSlug(val: string) {
+  return val
+    .toLowerCase()
+    .replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u")
+    .replace(/ö/g, "o").replace(/ç/g, "c").replace(/ı/g, "i")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 const registerSchema = loginSchema.extend({
   fullName: z.string().min(2),
   businessName: z.string().min(2),
-  slug: z.string().min(3).regex(/^[a-z0-9-]+$/),
+  slug: z.string().min(1).transform(normalizeSlug).pipe(z.string().min(3, "Slug en az 3 karakter olmalı")),
   category: z.string().optional(),
 });
 
@@ -183,7 +193,13 @@ export async function registerAction(formData: FormData) {
 
   } catch (e: any) {
     if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;
-    redirectUrl = `/register?error=${encodeURIComponent(e?.message || "Bir hata oluştu.")}`;
+    let msg = "Bir hata oluştu.";
+    if (e?.issues) {
+      msg = e.issues.map((i: any) => i.message).join(", ");
+    } else if (e?.message) {
+      msg = e.message;
+    }
+    redirectUrl = `/register?error=${encodeURIComponent(msg)}`;
   }
 
   redirect(redirectUrl);

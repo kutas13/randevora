@@ -23,6 +23,10 @@ ADD COLUMN IF NOT EXISTS payment_day integer;
 ALTER TABLE public.blocked_dates
 ADD COLUMN IF NOT EXISTS recurring boolean NOT NULL DEFAULT false;
 
+-- 5.5. Slot merge (çoklu hizmet slot birleştirme)
+ALTER TABLE public.businesses
+ADD COLUMN IF NOT EXISTS slot_merge boolean NOT NULL DEFAULT true;
+
 -- 6. Payments tablosu (ödeme kayıtları)
 CREATE TABLE IF NOT EXISTS public.payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

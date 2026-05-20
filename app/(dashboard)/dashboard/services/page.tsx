@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatMoney } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useBusinessId } from "@/lib/hooks/use-business";
 
 type Service = {
@@ -34,6 +35,7 @@ export default function ServicesPage() {
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   useEffect(() => { loadServices(); }, []);
 
@@ -104,7 +106,8 @@ export default function ServicesPage() {
   }
 
   async function removeService(id: string) {
-    if (!confirm("Bu hizmeti ve ilişkili randevularını silmek istediğinize emin misiniz?")) return;
+    const ok = await confirm({ title: "Hizmeti sil", message: "Bu hizmeti ve ilişkili randevularını silmek istediğinize emin misiniz?", confirmText: "Sil", variant: "danger" });
+    if (!ok) return;
 
     const res = await fetch("/api/delete-service", {
       method: "POST",

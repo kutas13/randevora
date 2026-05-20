@@ -97,7 +97,6 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
                   className="h-full flex-1 bg-transparent px-1 outline-none"
                   placeholder="nova-studio"
                   required
-                  pattern="^[a-z0-9-]+$"
                 />
               </div>
               <p className="mt-1 text-xs text-[var(--muted)]">Sadece küçük harf, rakam ve tire kullanın.</p>

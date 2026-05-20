@@ -20,13 +20,17 @@ type Props = {
   blockedDates?: BlockedDate[];
   bookingWindow?: string;
   slotCapacity?: number;
+  slotMerge?: boolean;
 };
 
 type Step = "service" | "employee" | "datetime" | "info" | "done";
 
-export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [], bookingWindow = "weekly", slotCapacity = 1 }: Props) {
+export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [], bookingWindow = "weekly", slotCapacity = 1, slotMerge = true }: Props) {
   const [step, setStep] = useState<Step>("service");
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const selectedService = selectedServices.length > 0 ? selectedServices[0] : null;
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
   const [selectedEmployee, setSelectedEmployee] = useState<string>(fixedEmployeeId || "");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -104,7 +108,6 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     return ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
   }
 
-  // Dolu saatleri yükle
   useEffect(() => {
     async function loadBusy() {
       const empId = fixedEmployeeId || selectedEmployee;
@@ -114,18 +117,22 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       const end = `${date}T23:59:59`;
       const { data } = await supabase
         .from("appointments")
-        .select("starts_at")
+        .select("starts_at, ends_at")
         .eq("employee_id", empId)
         .gte("starts_at", start)
         .lte("starts_at", end)
         .in("status", ["pending", "confirmed"]);
 
-      // Saat başına randevu sayısını say, kapasite doluysa "busy" olarak işaretle
       const countByHour: Record<string, number> = {};
       (data || []).forEach((a) => {
-        const d = new Date(a.starts_at);
-        const hour = `${String(d.getHours()).padStart(2, "0")}:00`;
-        countByHour[hour] = (countByHour[hour] || 0) + 1;
+        const s = new Date(a.starts_at);
+        const e = new Date(a.ends_at);
+        let current = new Date(s);
+        while (current < e) {
+          const hour = `${String(current.getHours()).padStart(2, "0")}:00`;
+          countByHour[hour] = (countByHour[hour] || 0) + 1;
+          current = new Date(current.getTime() + 60 * 60 * 1000);
+        }
       });
 
       const busy = Object.entries(countByHour)
@@ -137,7 +144,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   }, [date, selectedEmployee, fixedEmployeeId, slotCapacity]);
 
   function nextStep() {
-    if (step === "service" && selectedService) {
+    if (step === "service" && selectedServices.length > 0) {
       if (fixedEmployeeId) setStep("datetime");
       else setStep("employee");
     } else if (step === "employee" && selectedEmployee) {
@@ -147,13 +154,24 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     }
   }
 
+  function toggleService(s: Service) {
+    setSelectedServices((prev) =>
+      prev.find((ps) => ps.id === s.id)
+        ? prev.filter((ps) => ps.id !== s.id)
+        : [...prev, s]
+    );
+  }
+
   async function handleSubmit() {
     if (!name.trim() || !phone.trim()) { setError("Ad ve telefon gerekli."); return; }
     setSubmitting(true);
     setError("");
 
+    const totalHours = Math.ceil(totalDuration / 60);
+    const slotsToBlock = slotMerge ? Math.ceil(totalHours / 2) : totalHours;
+
     const startsAt = new Date(`${date}T${time}`);
-    const endsAt = new Date(startsAt.getTime() + (selectedService?.duration_minutes || 30) * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + slotsToBlock * 60 * 60 * 1000);
 
     const res = await fetch("/api/public-booking", {
       method: "POST",
@@ -162,11 +180,12 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
         businessId,
         name: name.trim(),
         phone: phone.trim(),
-        serviceId: selectedService!.id,
+        serviceId: selectedServices[0].id,
         employeeId: selectedEmployee || fixedEmployeeId,
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
-        priceCents: selectedService!.price_cents,
+        priceCents: totalPrice,
+        notes: selectedServices.map((s) => s.name).join(", "),
       }),
     });
 
@@ -190,7 +209,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
         </div>
         <h2 className="mt-5 text-2xl font-bold">Randevunuz alındı!</h2>
         <p className="mt-2 text-[var(--muted)]">
-          {selectedService?.name} · {date} {time}
+          {selectedServices.map((s) => s.name).join(", ")} · {date} {time}
         </p>
         <p className="mt-4 text-sm text-[var(--muted)]">İşletme onayladıktan sonra randevunuz kesinleşecektir.</p>
       </div>
@@ -214,27 +233,39 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       {/* Hizmet seçimi */}
       {step === "service" && (
         <div className="grid gap-3">
-          <h2 className="text-lg font-bold">Hizmet seçin</h2>
-          {services.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSelectedService(s)}
-              className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all ${selectedService?.id === s.id ? "border-[var(--accent)] bg-[var(--accent)]/5 shadow-sm" : "border-[var(--line)] hover:border-[var(--accent)]/50"}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="size-3 rounded-full" style={{ background: s.color }} />
-                <div>
-                  <strong className="block text-sm">{s.name}</strong>
-                  <span className="text-xs text-[var(--muted)]">{s.duration_minutes >= 60 && s.duration_minutes % 60 === 0 ? `${s.duration_minutes / 60} saat` : `${s.duration_minutes} dakika`}</span>
+          <h2 className="text-lg font-bold">Hizmet seçin <span className="text-sm font-normal text-[var(--muted)]">(birden fazla seçebilirsiniz)</span></h2>
+          {services.map((s) => {
+            const isSelected = selectedServices.some((ps) => ps.id === s.id);
+            return (
+              <button
+                key={s.id}
+                onClick={() => toggleService(s)}
+                className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]/5 shadow-sm" : "border-[var(--line)] hover:border-[var(--accent)]/50"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex size-5 items-center justify-center rounded-md border-2 transition ${isSelected ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line)]"}`}>
+                    {isSelected && <svg viewBox="0 0 12 12" className="size-3 text-white"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" fill="none" /></svg>}
+                  </div>
+                  <span className="size-3 rounded-full" style={{ background: s.color }} />
+                  <div>
+                    <strong className="block text-sm">{s.name}</strong>
+                    <span className="text-xs text-[var(--muted)]">{s.duration_minutes >= 60 && s.duration_minutes % 60 === 0 ? `${s.duration_minutes / 60} saat` : `${s.duration_minutes} dakika`}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <strong className="text-sm">{formatMoney(s.price_cents)}</strong>
-                {s.price_variable && <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>}
-              </div>
-            </button>
-          ))}
-          <Button onClick={nextStep} disabled={!selectedService} className="mt-3">
+                <div className="text-right">
+                  <strong className="text-sm">{formatMoney(s.price_cents)}</strong>
+                  {s.price_variable && <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>}
+                </div>
+              </button>
+            );
+          })}
+          {selectedServices.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg bg-[var(--accent)]/5 p-3 text-sm">
+              <span>{selectedServices.length} hizmet seçildi</span>
+              <span className="font-bold">{formatMoney(totalPrice)} · {totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dk`}</span>
+            </div>
+          )}
+          <Button onClick={nextStep} disabled={selectedServices.length === 0} className="mt-3">
             Devam
           </Button>
         </div>
@@ -305,9 +336,9 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
             </div>
           )}
 
-          {selectedService && date && (
+          {selectedServices.length > 0 && date && (
             <div className="rounded-lg bg-[var(--panel-strong)] p-3 text-sm">
-              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Süre: <strong>{selectedService.duration_minutes >= 60 && selectedService.duration_minutes % 60 === 0 ? `${selectedService.duration_minutes / 60} saat` : `${selectedService.duration_minutes} dakika`}</strong>
+              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Toplam Süre: <strong>{totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dakika`}</strong>
             </div>
           )}
 
@@ -333,9 +364,10 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
             <h3 className="text-sm font-bold">Randevu özeti</h3>
             <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
-              <p>Hizmet: <strong className="text-[var(--foreground)]">{selectedService?.name}</strong></p>
+              <p>Hizmet: <strong className="text-[var(--foreground)]">{selectedServices.map((s) => s.name).join(", ")}</strong></p>
               <p>Tarih: <strong className="text-[var(--foreground)]">{date} {time}</strong></p>
-              <p>Ücret: <strong className="text-[var(--foreground)]">{formatMoney(selectedService?.price_cents || 0)}</strong></p>
+              <p>Toplam Süre: <strong className="text-[var(--foreground)]">{totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dk`}</strong></p>
+              <p>Ücret: <strong className="text-[var(--foreground)]">{formatMoney(totalPrice)}</strong></p>
             </div>
           </div>
 

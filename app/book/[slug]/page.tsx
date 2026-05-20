@@ -13,7 +13,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, name, category, booking_window, slot_capacity")
+    .select("id, name, category, booking_window, slot_capacity, slot_merge")
     .eq("slug", slug)
     .eq("status", "approved")
     .single();
@@ -100,6 +100,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
           blockedDates={blockedDates || []}
           bookingWindow={business.booking_window || "weekly"}
           slotCapacity={business.slot_capacity || 1}
+          slotMerge={business.slot_merge !== false}
         />
       </div>
     </main>

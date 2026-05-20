@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [closeTime, setCloseTime] = useState("20:00");
   const [bookingWindow, setBookingWindow] = useState("weekly");
   const [slotCapacity, setSlotCapacity] = useState(1);
+  const [slotMerge, setSlotMerge] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +36,7 @@ export default function SettingsPage() {
   async function loadSettings() {
     const { data: biz } = await supabase
       .from("businesses")
-      .select("name, category, slug, booking_window, slot_capacity")
+      .select("name, category, slug, booking_window, slot_capacity, slot_merge")
       .eq("id", businessId)
       .single();
 
@@ -45,6 +46,7 @@ export default function SettingsPage() {
       setSlug(biz.slug);
       setBookingWindow(biz.booking_window || "weekly");
       setSlotCapacity(biz.slot_capacity || 1);
+      setSlotMerge(biz.slot_merge !== false);
     }
 
     // Çalışma saatlerini yükle (ilk personel üzerinden veya genel)
@@ -82,7 +84,7 @@ export default function SettingsPage() {
     // İşletme bilgilerini güncelle
     const { error: bizErr } = await supabase
       .from("businesses")
-      .update({ name, category, slug, booking_window: bookingWindow, slot_capacity: slotCapacity })
+      .update({ name, category, slug, booking_window: bookingWindow, slot_capacity: slotCapacity, slot_merge: slotMerge })
       .eq("id", businessId);
 
     if (bizErr) {
@@ -194,6 +196,18 @@ export default function SettingsPage() {
                 onChange={(e) => setSlotCapacity(Math.max(1, parseInt(e.target.value) || 1))}
               />
               <p className="mt-1 text-xs text-[var(--muted)]">Aynı saatte kaç müşteri kabul edebileceğinizi belirleyin. (Örn: 2 = aynı saatte 2 randevu alınabilir)</p>
+            </div>
+
+            <div className="mt-4">
+              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+                <div>
+                  <span className="text-sm font-semibold">Slot birleştirme (optimizasyon)</span>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">Açıkken: Çoklu hizmet seçildiğinde slotlar yarıya düşürülür. (3 saat = 2 slot kapatır, 5 saat = 3 slot kapatır)</p>
+                </div>
+                <div className={`relative h-6 w-11 shrink-0 rounded-full transition ${slotMerge ? "bg-[var(--accent)]" : "bg-[var(--line)]"}`} onClick={() => setSlotMerge(!slotMerge)}>
+                  <div className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition ${slotMerge ? "left-[22px]" : "left-0.5"}`} />
+                </div>
+              </label>
             </div>
             <div className="mt-4 grid grid-cols-7 gap-1.5">
               {weekdays.map((day, index) => (

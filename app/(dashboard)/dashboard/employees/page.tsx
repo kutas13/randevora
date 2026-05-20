@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { initials } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useBusinessId } from "@/lib/hooks/use-business";
 
 type Employee = {
@@ -34,6 +35,7 @@ export default function EmployeesPage() {
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
 
   useEffect(() => { loadEmployees(); }, []);
 
@@ -98,7 +100,8 @@ export default function EmployeesPage() {
   }
 
   async function removeEmployee(id: string) {
-    if (!confirm("Bu çalışanı ve ilişkili randevularını silmek istediğinize emin misiniz?")) return;
+    const ok = await confirm({ title: "Çalışanı sil", message: "Bu çalışanı ve ilişkili randevularını silmek istediğinize emin misiniz?", confirmText: "Sil", variant: "danger" });
+    if (!ok) return;
     const res = await fetch("/api/delete-employee", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
