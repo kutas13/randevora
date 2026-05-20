@@ -16,12 +16,18 @@ const registerSchema = loginSchema.extend({
 });
 
 export async function loginAction(formData: FormData) {
-  const values = loginSchema.parse({
+  const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
 
+  if (!parsed.success) {
+    redirect(`/login?error=${encodeURIComponent("Geçerli e-posta ve şifre girin.")}`);
+  }
+
+  const values = parsed.data;
   const supabase = await createClient();
+
   const { error, data } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
@@ -29,14 +35,19 @@ export async function loginAction(formData: FormData) {
   }
 
   // Kullanıcı rolünü kontrol et
-  const { data: user } = await supabase
+  const { data: user, error: userError } = await supabase
     .from("users")
     .select("role, business_id")
     .eq("id", data.user.id)
     .single();
 
-  if (!user) {
-    redirect(`/login?error=${encodeURIComponent("Kullanıcı profili bulunamadı.")}`);
+  // Profil yoksa metadata'dan oluşturmayı dene
+  if (userError || !user) {
+    const meta = data.user.user_metadata;
+    if (meta?.role === "super_admin") {
+      redirect("/super-admin");
+    }
+    redirect(`/login?error=${encodeURIComponent("Kullanıcı profili bulunamadı. /api/setup adresini ziyaret edin.")}`);
   }
 
   // Super admin direkt panele
@@ -59,12 +70,12 @@ export async function loginAction(formData: FormData) {
 
     if (business?.status === "rejected") {
       await supabase.auth.signOut();
-      redirect(`/login?error=${encodeURIComponent("İşletme başvurunuz reddedildi. Destek ile iletişime geçin.")}`);
+      redirect(`/login?error=${encodeURIComponent("İşletme başvurunuz reddedildi.")}`);
     }
 
     if (business?.status === "suspended") {
       await supabase.auth.signOut();
-      redirect(`/login?error=${encodeURIComponent("İşletmeniz askıya alındı. Destek ile iletişime geçin.")}`);
+      redirect(`/login?error=${encodeURIComponent("İşletmeniz askıya alındı.")}`);
     }
   }
 
