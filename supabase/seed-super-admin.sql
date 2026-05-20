@@ -1,38 +1,48 @@
 -- =============================================
--- SUPER ADMIN OLUŞTURMA
+-- SUPER ADMIN OLUŞTURMA (Direkt insert)
 -- =============================================
--- Bu SQL'i schema.sql'den SONRA çalıştır.
--- Önce Supabase Auth'da kullanıcıyı oluştur:
---   Email: gmyusuf13@gmail.com
---   Password: 47504750Ff*
--- 
--- Auth'da kullanıcı oluşturduktan sonra, 
--- Authentication > Users sayfasından kullanıcının UUID'sini al
--- ve aşağıdaki SQL'de <USER_UUID> yerine yapıştır.
--- =============================================
+-- Bu script auth.users tablosuna direkt kullanıcı ekler
+-- Supabase Dashboard'a gerek kalmadan çalışır
 
--- Yöntem 1: Eğer kullanıcı zaten auth.users'da varsa
--- (Supabase Dashboard > Authentication > Users'dan UUID'yi al)
+-- Önce varsa sil
+delete from public.users where email = 'gmyusuf13@gmail.com';
+delete from auth.users where email = 'gmyusuf13@gmail.com';
 
--- INSERT INTO public.users (id, role, full_name, email)
--- VALUES ('<USER_UUID>', 'super_admin', 'Super Admin', 'gmyusuf13@gmail.com')
--- ON CONFLICT (id) DO UPDATE SET role = 'super_admin';
+-- Auth kullanıcı oluştur
+insert into auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  aud,
+  role,
+  created_at,
+  updated_at,
+  confirmation_token,
+  recovery_token
+)
+values (
+  gen_random_uuid(),
+  '00000000-0000-0000-0000-000000000000',
+  'gmyusuf13@gmail.com',
+  crypt('47504750Ff*', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"role":"super_admin","full_name":"Super Admin"}',
+  'authenticated',
+  'authenticated',
+  now(),
+  now(),
+  '',
+  ''
+);
 
--- Yöntem 2: Email ile otomatik bul ve ata
-do $$
-declare
-  _uid uuid;
-begin
-  select id into _uid from auth.users where email = 'gmyusuf13@gmail.com' limit 1;
-  
-  if _uid is not null then
-    insert into public.users (id, role, full_name, email)
-    values (_uid, 'super_admin', 'Super Admin', 'gmyusuf13@gmail.com')
-    on conflict (id) do update set role = 'super_admin';
-    
-    raise notice 'Super admin atandı: %', _uid;
-  else
-    raise notice 'Kullanıcı bulunamadı. Önce Authentication > Users sayfasından gmyusuf13@gmail.com ile kayıt oluşturun.';
-  end if;
-end;
-$$;
+-- Public users tablosuna super admin olarak ekle
+insert into public.users (id, role, full_name, email)
+select id, 'super_admin', 'Super Admin', 'gmyusuf13@gmail.com'
+from auth.users
+where email = 'gmyusuf13@gmail.com'
+on conflict (id) do update set role = 'super_admin';
