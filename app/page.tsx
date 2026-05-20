@@ -165,6 +165,46 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section className="border-t border-[var(--line)] px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center">
+            <h2 className="text-3xl font-black md:text-5xl">Basit ve şeffaf fiyatlandırma</h2>
+            <p className="mt-4 text-lg text-[var(--muted)]">Tüm planlarda sınırsız randevu. Randevu kotası yoktur.</p>
+          </div>
+          <div className="mx-auto mt-12 grid max-w-3xl gap-6 md:grid-cols-2">
+            <article className="glass rounded-2xl border border-[var(--accent)] p-7 shadow-lg shadow-[var(--accent)]/10">
+              <div className="inline-block rounded-lg bg-[var(--accent)]/10 px-3 py-1 text-xs font-bold text-[var(--accent)]">Önerilen</div>
+              <h3 className="mt-3 text-xl font-bold">Başlangıç</h3>
+              <p className="text-sm text-[var(--muted)]">Küçük ve orta ölçekli işletmeler için</p>
+              <div className="mt-4"><span className="text-4xl font-black">999</span><span className="text-sm text-[var(--muted)]"> TL/ay</span></div>
+              <ul className="mt-5 grid gap-2 text-sm">
+                {["Sınırsız randevu", "Admin dahil 5 çalışan", "Online randevu sayfası", "Takvim yönetimi", "Müşteri yönetimi", "İzin yönetimi", "Çalışma saati ayarları"].map((f) => (
+                  <li key={f} className="flex items-center gap-2"><CheckCircle2 size={15} className="shrink-0 text-[var(--accent)]" />{f}</li>
+                ))}
+              </ul>
+              <Link href="/register" className="mt-6 block">
+                <Button className="w-full">Hemen başla</Button>
+              </Link>
+            </article>
+            <article className="glass rounded-2xl p-7">
+              <div className="inline-block rounded-lg bg-neutral-100 px-3 py-1 text-xs font-bold text-neutral-700 dark:bg-white/10 dark:text-neutral-300">Profesyonel</div>
+              <h3 className="mt-3 text-xl font-bold">Profesyonel</h3>
+              <p className="text-sm text-[var(--muted)]">Büyük işletmeler ve çoklu şubeler için</p>
+              <div className="mt-4"><span className="text-4xl font-black">1999</span><span className="text-sm text-[var(--muted)]"> TL/ay</span></div>
+              <ul className="mt-5 grid gap-2 text-sm">
+                {["Sınırsız randevu", "Admin dahil 10 çalışan", "WhatsApp entegrasyonu", "Özel domain bağlama", "Öncelikli destek", "Gelişmiş raporlar", "Tüm Başlangıç özellikleri"].map((f) => (
+                  <li key={f} className="flex items-center gap-2"><CheckCircle2 size={15} className="shrink-0 text-[var(--accent)]" />{f}</li>
+                ))}
+              </ul>
+              <Link href="/register" className="mt-6 block">
+                <Button variant="secondary" className="w-full">Profesyonel&apos;e geç</Button>
+              </Link>
+            </article>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="border-t border-[var(--line)] px-4 py-20">
         <div className="mx-auto max-w-3xl text-center">
