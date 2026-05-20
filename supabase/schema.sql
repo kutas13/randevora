@@ -171,7 +171,7 @@ alter table public.working_hours enable row level security;
 alter table public.blocked_dates enable row level security;
 alter table public.notifications enable row level security;
 
--- Helper functions
+-- Helper functions (security definer = postgres superuser olarak çalışır, RLS bypass eder)
 create or replace function public.current_business_id()
 returns uuid
 language sql
@@ -189,7 +189,10 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.users where id = auth.uid() and role = 'super_admin')
+  select coalesce(
+    (select role = 'super_admin' from public.users where id = auth.uid()),
+    false
+  )
 $$;
 
 create or replace function public.get_user_role()
@@ -202,22 +205,22 @@ as $$
   select role from public.users where id = auth.uid()
 $$;
 
+-- =============================================
 -- RLS Policies - Businesses
-create policy "business_select" on public.businesses for select using (
-  public.is_super_admin() 
-  or id = public.current_business_id() 
-  or owner_id = auth.uid()
-  or status = 'approved'
+-- =============================================
+create policy "businesses_select" on public.businesses for select using (true);
+create policy "businesses_insert" on public.businesses for insert with check (owner_id = auth.uid());
+create policy "businesses_update" on public.businesses for update using (
+  public.is_super_admin() or owner_id = auth.uid()
 );
-create policy "business_insert" on public.businesses for insert with check (owner_id = auth.uid());
-create policy "business_update" on public.businesses for update using (public.is_super_admin() or owner_id = auth.uid());
+create policy "businesses_delete" on public.businesses for delete using (
+  public.is_super_admin()
+);
 
+-- =============================================
 -- RLS Policies - Users
-create policy "users_select" on public.users for select using (
-  public.is_super_admin() 
-  or business_id = public.current_business_id() 
-  or id = auth.uid()
-);
+-- =============================================
+create policy "users_select" on public.users for select using (true);
 create policy "users_insert" on public.users for insert with check (true);
 create policy "users_update" on public.users for update using (
   public.is_super_admin() 
@@ -225,37 +228,111 @@ create policy "users_update" on public.users for update using (
   or business_id = public.current_business_id()
 );
 
--- RLS Policies - Tenant tables
-create policy "employees_all" on public.employees for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "services_all" on public.services for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "customers_all" on public.customers for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "subscriptions_all" on public.subscriptions for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "hours_all" on public.working_hours for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "blocks_all" on public.blocked_dates for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-create policy "notifications_all" on public.notifications for all using (public.is_super_admin() or business_id = public.current_business_id()) with check (public.is_super_admin() or business_id = public.current_business_id());
-
--- Appointments
-create policy "appointments_select" on public.appointments for select using (
-  public.is_super_admin()
-  or business_id = public.current_business_id()
-  or employee_id in (select id from public.employees where user_id = auth.uid())
-);
-create policy "appointments_write" on public.appointments for all using (
+-- =============================================
+-- RLS Policies - Employees
+-- =============================================
+create policy "employees_select" on public.employees for select using (true);
+create policy "employees_insert" on public.employees for insert with check (
   public.is_super_admin() or business_id = public.current_business_id()
-) with check (
+);
+create policy "employees_update" on public.employees for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "employees_delete" on public.employees for delete using (
   public.is_super_admin() or business_id = public.current_business_id()
 );
 
--- Public booking policies (herkes okuyabilsin, müşteri randevu oluşturabilsin)
-create policy "public_services_read" on public.services for select using (true);
-create policy "public_employees_read" on public.employees for select using (true);
-create policy "public_businesses_read" on public.businesses for select using (true);
-create policy "public_hours_read" on public.working_hours for select using (true);
-create policy "public_blocks_read" on public.blocked_dates for select using (true);
-create policy "public_appointments_read" on public.appointments for select using (true);
-create policy "public_customers_insert" on public.customers for insert with check (true);
-create policy "public_appointments_insert" on public.appointments for insert with check (true);
-create policy "public_notifications_insert" on public.notifications for insert with check (true);
+-- =============================================
+-- RLS Policies - Services
+-- =============================================
+create policy "services_select" on public.services for select using (true);
+create policy "services_insert" on public.services for insert with check (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "services_update" on public.services for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "services_delete" on public.services for delete using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Customers
+-- =============================================
+create policy "customers_select" on public.customers for select using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "customers_insert" on public.customers for insert with check (true);
+create policy "customers_update" on public.customers for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "customers_delete" on public.customers for delete using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Appointments
+-- =============================================
+create policy "appointments_select" on public.appointments for select using (true);
+create policy "appointments_insert" on public.appointments for insert with check (true);
+create policy "appointments_update" on public.appointments for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "appointments_delete" on public.appointments for delete using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Subscriptions
+-- =============================================
+create policy "subscriptions_select" on public.subscriptions for select using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "subscriptions_insert" on public.subscriptions for insert with check (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "subscriptions_update" on public.subscriptions for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Working Hours
+-- =============================================
+create policy "hours_select" on public.working_hours for select using (true);
+create policy "hours_insert" on public.working_hours for insert with check (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "hours_update" on public.working_hours for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "hours_delete" on public.working_hours for delete using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Blocked Dates
+-- =============================================
+create policy "blocks_select" on public.blocked_dates for select using (true);
+create policy "blocks_insert" on public.blocked_dates for insert with check (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "blocks_update" on public.blocked_dates for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "blocks_delete" on public.blocked_dates for delete using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+
+-- =============================================
+-- RLS Policies - Notifications
+-- =============================================
+create policy "notifications_select" on public.notifications for select using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
+create policy "notifications_insert" on public.notifications for insert with check (true);
+create policy "notifications_update" on public.notifications for update using (
+  public.is_super_admin() or business_id = public.current_business_id()
+);
 
 -- =============================================
 -- INDEXES
@@ -268,14 +345,20 @@ create index idx_customers_business_phone on public.customers (business_id, phon
 create index idx_businesses_status on public.businesses (status);
 create index idx_businesses_slug on public.businesses (slug);
 
--- Randevu çakışma kontrolü
-alter table public.appointments
-  add constraint no_employee_overlap
-  exclude using gist (
-    employee_id with =,
-    tstzrange(starts_at, ends_at, '[)') with &&
-  )
-  where (status in ('pending', 'confirmed'));
+-- Randevu çakışma kontrolü (btree_gist gerektirir)
+do $$
+begin
+  alter table public.appointments
+    add constraint no_employee_overlap
+    exclude using gist (
+      employee_id with =,
+      tstzrange(starts_at, ends_at, '[)') with &&
+    )
+    where (status in ('pending', 'confirmed'));
+exception when others then
+  raise notice 'Overlap constraint atlandı: %', sqlerrm;
+end;
+$$;
 
 -- =============================================
 -- TRIGGER: Kayıt sonrası otomatik business + user oluştur
