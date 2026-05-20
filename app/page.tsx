@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 const segments = ["Berber", "Kuaför", "Nail studio", "Güzellik merkezi", "Danışman", "Freelancer", "Özel ders", "Dövmeci", "Spa & Masaj"];
 
 const featureCards: Array<{ icon: LucideIcon; title: string; text: string }> = [
-  { icon: Zap, title: "Ultra hızlı", text: "Modern App Router altyapısı, streaming hazır sayfalar ile müşterilerinize hızlı deneyim." },
-  { icon: ShieldCheck, title: "Güvenli altyapı", text: "Rol bazlı erişim, PostgreSQL RLS ve multi-tenant izolasyon ile verileriniz güvende." },
+  { icon: Zap, title: "Ultra hızlı", text: "Anında yüklenen sayfalar ile müşterilerinize hızlı ve akıcı deneyim." },
+  { icon: ShieldCheck, title: "Güvenli altyapı", text: "Rol bazlı erişim ve güçlü veritabanı güvenliği ile verileriniz güvende." },
   { icon: Globe, title: "Online booking", text: "Her personel için özel link. Müşterileriniz kayıt olmadan kolayca randevu alsın." },
   { icon: Clock, title: "Akıllı takvim", text: "Dolu saatleri otomatik göster, çakışmayı engelle, tek tıkla onayla." },
-  { icon: Laptop, title: "Zarif panel", text: "Stripe ve Linear'dan ilham alan temiz, minimal ve güçlü yönetim arayüzü." },
+  { icon: Laptop, title: "Zarif panel", text: "Temiz, minimal ve güçlü yönetim paneli ile işletmenizi kolayca yönetin." },
   { icon: Smartphone, title: "Her cihazda", text: "Responsive tasarım ile telefondan, tabletten, bilgisayardan mükemmel deneyim." },
 ];
 
@@ -55,7 +55,7 @@ export default function HomePage() {
           <div className="animate-fade-in">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-sm text-[var(--muted)] shadow-sm">
               <Sparkles size={16} className="text-[var(--accent)]" />
-              Modern randevu yönetimi platformu
+              Online randevu sistemi
             </div>
 
             <h1 className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[1.1] tracking-tight md:text-7xl lg:text-8xl">
@@ -149,7 +149,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <h2 className="text-3xl font-black md:text-5xl">Neden randevora?</h2>
-            <p className="mt-4 text-lg text-[var(--muted)]">İşletmenizi büyütecek her özellik tek platformda.</p>
+            <p className="mt-4 text-lg text-[var(--muted)]">İşletmenizi büyütecek her özellik tek yerde.</p>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {featureCards.map(({ icon: Icon, title, text }) => (

@@ -36,11 +36,27 @@ export default async function EmployeeBookingPage({ params }: { params: Promise<
     .eq("business_id", business.id)
     .eq("active", true);
 
+  const { data: workingHours } = await supabase
+    .from("working_hours")
+    .select("employee_id, weekday, starts_at, ends_at")
+    .eq("employee_id", employee.id);
+
+  const now = new Date();
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
+
+  const { data: blockedDates } = await supabase
+    .from("blocked_dates")
+    .select("employee_id, starts_at, ends_at")
+    .eq("employee_id", employee.id)
+    .gte("ends_at", now.toISOString())
+    .lte("starts_at", endOfWeek.toISOString());
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-[var(--panel)] to-[var(--background)] px-4 py-8">
       <div className="mx-auto max-w-lg">
         <div className="mb-8 text-center">
-          <img src="/logo.png" alt="Randevora" className="size-14 rounded-xl object-cover shadow-lg" />
+          <img src="/logo.png" alt="Randevora" className="mx-auto size-14 rounded-xl object-cover shadow-lg" />
           <h1 className="mt-4 text-3xl font-black">{employee.full_name}</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">{employee.title || "Personel"} · {business.name}</p>
         </div>
@@ -50,6 +66,8 @@ export default async function EmployeeBookingPage({ params }: { params: Promise<
           services={services || []}
           employees={[]}
           fixedEmployeeId={employee.id}
+          workingHours={workingHours || []}
+          blockedDates={blockedDates || []}
         />
       </div>
     </main>

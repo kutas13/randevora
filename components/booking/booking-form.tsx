@@ -8,19 +8,21 @@ import { formatMoney } from "@/lib/utils";
 
 type Service = { id: string; name: string; duration_minutes: number; price_cents: number; price_variable: boolean; color: string };
 type Employee = { id: string; full_name: string; title: string | null };
+type WorkingHour = { employee_id: string; weekday: number; starts_at: string; ends_at: string };
+type BlockedDate = { employee_id: string; starts_at: string; ends_at: string };
 
 type Props = {
   businessId: string;
   services: Service[];
   employees: Employee[];
   fixedEmployeeId: string | null;
+  workingHours?: WorkingHour[];
+  blockedDates?: BlockedDate[];
 };
 
 type Step = "service" | "employee" | "datetime" | "info" | "done";
 
-const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
-
-export function BookingForm({ businessId, services, employees, fixedEmployeeId }: Props) {
+export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [] }: Props) {
   const [step, setStep] = useState<Step>("service");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>(fixedEmployeeId || "");
@@ -33,6 +35,55 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId }
   const [busySlots, setBusySlots] = useState<string[]>([]);
 
   const supabase = createClient();
+
+  // Hafta sonuna kadar izin verilen tarih aralığı
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(today);
+  const dayOfWeek = today.getDay();
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+  endOfWeek.setDate(today.getDate() + daysUntilSunday);
+
+  // Seçili personelin izinli olduğu günleri kontrol et
+  function isBlockedDay(dateStr: string) {
+    const empId = fixedEmployeeId || selectedEmployee;
+    if (!empId) return false;
+    const d = new Date(dateStr);
+    return blockedDates.some((bd) => {
+      if (bd.employee_id !== empId) return false;
+      const start = new Date(bd.starts_at);
+      const end = new Date(bd.ends_at);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return d >= start && d <= end;
+    });
+  }
+
+  // Çalışma saatlerine göre uygun saatleri al
+  function getAvailableHours(dateStr: string): string[] {
+    const empId = fixedEmployeeId || selectedEmployee;
+    if (!empId || !dateStr) return defaultHours();
+
+    const d = new Date(dateStr);
+    const weekday = d.getDay();
+
+    const empHours = workingHours.filter((wh) => wh.employee_id === empId && wh.weekday === weekday);
+    if (empHours.length === 0) return defaultHours();
+
+    const slots: string[] = [];
+    for (const wh of empHours) {
+      const startH = parseInt(wh.starts_at.split(":")[0]);
+      const endH = parseInt(wh.ends_at.split(":")[0]);
+      for (let h = startH; h < endH; h++) {
+        slots.push(`${String(h).padStart(2, "0")}:00`);
+      }
+    }
+    return slots.length > 0 ? slots : defaultHours();
+  }
+
+  function defaultHours() {
+    return ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
+  }
 
   // Dolu saatleri yükle
   useEffect(() => {
@@ -126,6 +177,8 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId }
     );
   }
 
+  const availableHours = getAvailableHours(date);
+
   return (
     <div className="glass rounded-2xl p-6">
       {/* Progress */}
@@ -196,13 +249,18 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId }
       {step === "datetime" && (
         <div className="grid gap-4">
           <h2 className="text-lg font-bold">Tarih ve saat seçin</h2>
-          <MiniCalendar value={date} onChange={(d) => { setDate(d); setTime(""); }} />
+          <WeekCalendar
+            value={date}
+            onChange={(d) => { setDate(d); setTime(""); }}
+            maxDate={endOfWeek}
+            isBlocked={isBlockedDay}
+          />
 
           {date && (
             <div>
               <p className="mb-2 text-sm font-semibold">Uygun saatler</p>
               <div className="grid grid-cols-4 gap-2">
-                {TIME_SLOTS.map((slot) => {
+                {availableHours.map((slot) => {
                   const isBusy = busySlots.includes(slot);
                   const isSelected = time === slot;
                   return (
@@ -252,7 +310,6 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId }
             <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="+90 5xx xxx xx xx" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
 
-          {/* Özet */}
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
             <h3 className="text-sm font-bold">Randevu özeti</h3>
             <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
@@ -281,82 +338,53 @@ function StepIndicator({ label, active, done }: { label: string; active: boolean
   );
 }
 
-function MiniCalendar({ value, onChange }: { value: string; onChange: (d: string) => void }) {
+function WeekCalendar({ value, onChange, maxDate, isBlocked }: { value: string; onChange: (d: string) => void; maxDate: Date; isBlocked: (d: string) => boolean }) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(new Date());
+  today.setHours(0, 0, 0, 0);
 
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-  const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const totalDays = lastDay.getDate();
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let i = 1; i <= totalDays; i++) cells.push(i);
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  function isDisabled(day: number) {
-    const d = new Date(year, month, day);
-    d.setHours(0, 0, 0, 0);
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return d < t;
+  // Bu haftanın günlerini oluştur (bugünden pazar gününe kadar)
+  const days: Date[] = [];
+  const current = new Date(today);
+  while (current <= maxDate) {
+    days.push(new Date(current));
+    current.setDate(current.getDate() + 1);
   }
 
-  function isSelected(day: number) {
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` === value;
-  }
-
-  function isToday(day: number) {
-    return day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-  }
-
-  function selectDay(day: number) {
-    onChange(`${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
-  }
+  const dayLabels = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+  const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="flex size-8 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10">
-          <ChevronLeft size={16} />
-        </button>
-        <span className="text-sm font-bold">{monthNames[month]} {year}</span>
-        <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} className="flex size-8 items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10">
-          <ChevronRight size={16} />
-        </button>
-      </div>
+      <p className="mb-3 text-center text-xs font-semibold text-[var(--muted)]">Bu hafta</p>
       <div className="grid grid-cols-7 gap-1">
-        {dayNames.map((d) => (
-          <div key={d} className="text-center text-[10px] font-semibold text-[var(--muted)]">{d}</div>
-        ))}
-        {cells.map((day, i) => (
-          <div key={i} className="flex items-center justify-center">
-            {day ? (
-              <button
-                type="button"
-                disabled={isDisabled(day)}
-                onClick={() => selectDay(day)}
-                className={`flex size-9 items-center justify-center rounded-lg text-sm font-medium transition-all ${
-                  isDisabled(day)
-                    ? "cursor-not-allowed opacity-30"
-                    : isSelected(day)
-                    ? "bg-gradient-to-r from-[#b07c4f] to-[#d4956a] text-white shadow-sm"
-                    : isToday(day)
-                    ? "border border-[var(--accent)] text-[var(--accent)]"
-                    : "hover:bg-[var(--accent)]/10"
-                }`}
-              >
-                {day}
-              </button>
-            ) : <span />}
-          </div>
-        ))}
+        {days.map((day) => {
+          const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+          const blocked = isBlocked(dateStr);
+          const isSelected = dateStr === value;
+          const isToday = day.getTime() === today.getTime();
+
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              disabled={blocked}
+              onClick={() => onChange(dateStr)}
+              className={`flex flex-col items-center rounded-xl p-2 transition-all ${
+                blocked
+                  ? "cursor-not-allowed opacity-30"
+                  : isSelected
+                  ? "bg-gradient-to-b from-[#b07c4f] to-[#d4956a] text-white shadow-sm"
+                  : isToday
+                  ? "border border-[var(--accent)]"
+                  : "hover:bg-[var(--accent)]/10"
+              }`}
+            >
+              <span className="text-[10px] font-semibold">{dayLabels[day.getDay()]}</span>
+              <span className="text-lg font-bold">{day.getDate()}</span>
+              <span className="text-[9px]">{monthNames[day.getMonth()]}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

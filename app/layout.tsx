@@ -4,9 +4,9 @@ import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "randevora | Modern SaaS Randevu Sistemi",
-  description: "Berberlerden danışmanlara kadar her işletme için ultra hızlı online randevu ve işletme yönetimi platformu.",
-  keywords: ["randevu", "booking", "saas", "berber", "kuaför", "güzellik merkezi", "online randevu"],
+  title: "randevora | Online Randevu Sistemi",
+  description: "Berberlerden danışmanlara kadar her işletme için ultra hızlı online randevu sistemi. Randevunuz bizde.",
+  keywords: ["randevu", "booking", "berber", "kuaför", "güzellik merkezi", "online randevu", "randevora"],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
