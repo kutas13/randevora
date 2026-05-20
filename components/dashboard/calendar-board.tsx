@@ -33,7 +33,13 @@ export function CalendarBoard() {
         .lt("starts_at", endOfWeek.toISOString())
         .in("status", ["pending", "confirmed"]);
 
-      setAppointments(data || []);
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        starts_at: row.starts_at,
+        customer: Array.isArray(row.customer) ? row.customer[0] || null : row.customer,
+        service: Array.isArray(row.service) ? row.service[0] || null : row.service,
+      }));
+      setAppointments(mapped);
     }
     load();
   }, []);

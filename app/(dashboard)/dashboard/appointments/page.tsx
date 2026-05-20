@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, Edit3, Plus, Trash2 } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,9 @@ type Appointment = {
   status: string;
   price_cents: number;
   notes: string | null;
+  customer_id: string;
+  employee_id: string;
+  service_id: string;
   customer: { full_name: string; phone: string } | null;
   employee: { full_name: string } | null;
   service: { name: string; color: string; duration_minutes: number; price_cents: number } | null;
@@ -32,10 +35,14 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [editingApt, setEditingApt] = useState<Appointment | null>(null);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ customer_id: "", service_id: "", employee_id: "", date: "", time: "", notes: "", newCustomerName: "", newCustomerPhone: "", useNewCustomer: false });
+  const [editForm, setEditForm] = useState({ service_id: "", employee_id: "", date: "", time: "", notes: "", status: "" });
 
   const { businessId } = useBusinessId();
   const supabase = createClient();
@@ -66,26 +73,25 @@ export default function AppointmentsPage() {
 
   async function handleCreate() {
     if (!businessId) { toast("İşletme bilgisi bulunamadı.", "error"); return; }
+    setSubmitting(true);
 
     let customerId = form.customer_id;
 
     if (form.useNewCustomer) {
       if (!form.newCustomerName || !form.newCustomerPhone) {
-        toast("Müşteri adı ve telefonu gerekli.", "error");
-        return;
+        toast("Müşteri adı ve telefonu gerekli.", "error"); setSubmitting(false); return;
       }
       const { data: newCust, error: custErr } = await supabase
         .from("customers")
         .insert({ full_name: form.newCustomerName, phone: form.newCustomerPhone, business_id: businessId })
         .select("id")
         .single();
-      if (custErr) { toast("Müşteri oluşturulamadı: " + custErr.message, "error"); return; }
+      if (custErr) { toast("Müşteri oluşturulamadı: " + custErr.message, "error"); setSubmitting(false); return; }
       customerId = newCust.id;
     }
 
     if (!customerId || !form.service_id || !form.employee_id || !form.date || !form.time) {
-      toast("Tüm alanları doldurun.", "error");
-      return;
+      toast("Tüm alanları doldurun.", "error"); setSubmitting(false); return;
     }
 
     const service = services.find((s) => s.id === form.service_id);
@@ -104,13 +110,60 @@ export default function AppointmentsPage() {
       notes: form.notes || null,
     });
 
-    if (error) { toast("Randevu oluşturulamadı: " + error.message, "error"); return; }
+    if (error) { toast("Randevu oluşturulamadı: " + error.message, "error"); }
+    else {
+      toast("Randevu oluşturuldu!", "success");
+      setForm({ customer_id: "", service_id: "", employee_id: "", date: "", time: "", notes: "", newCustomerName: "", newCustomerPhone: "", useNewCustomer: false });
+      setShowModal(false);
+      loadAppointments();
+      loadOptions();
+    }
+    setSubmitting(false);
+  }
 
-    toast("Randevu oluşturuldu!", "success");
-    setForm({ customer_id: "", service_id: "", employee_id: "", date: "", time: "", notes: "", newCustomerName: "", newCustomerPhone: "", useNewCustomer: false });
-    setShowModal(false);
-    loadAppointments();
-    loadOptions();
+  function openEdit(apt: Appointment) {
+    setEditingApt(apt);
+    const start = new Date(apt.starts_at);
+    setEditForm({
+      service_id: apt.service_id,
+      employee_id: apt.employee_id,
+      date: start.toISOString().split("T")[0],
+      time: start.toTimeString().slice(0, 5),
+      notes: apt.notes || "",
+      status: apt.status,
+    });
+    setEditModal(true);
+  }
+
+  async function handleEdit() {
+    if (!editingApt) return;
+    setSubmitting(true);
+
+    const service = services.find((s) => s.id === editForm.service_id);
+    const startsAt = new Date(`${editForm.date}T${editForm.time}`);
+    const endsAt = new Date(startsAt.getTime() + (service?.duration_minutes || 30) * 60 * 1000);
+
+    const { error } = await supabase.from("appointments").update({
+      service_id: editForm.service_id,
+      employee_id: editForm.employee_id,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      price_cents: service?.price_cents || editingApt.price_cents,
+      status: editForm.status,
+      notes: editForm.notes || null,
+    }).eq("id", editingApt.id);
+
+    if (error) { toast("Güncellenemedi: " + error.message, "error"); }
+    else { toast("Randevu güncellendi!", "success"); setEditModal(false); loadAppointments(); }
+    setSubmitting(false);
+  }
+
+  async function removeAppointment(id: string) {
+    if (!confirm("Bu randevuyu silmek istediğinize emin misiniz?")) return;
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+    if (error) { toast("Silinemedi: " + error.message, "error"); return; }
+    toast("Randevu silindi.", "success");
+    setAppointments(appointments.filter((a) => a.id !== id));
   }
 
   async function updateStatus(id: string, status: string) {
@@ -133,11 +186,7 @@ export default function AppointmentsPage() {
         </div>
 
         {appointments.length === 0 ? (
-          <EmptyState
-            icon={CalendarClock}
-            title="Henüz randevu yok"
-            description="Yeni randevu oluşturun veya müşterileriniz online booking sayfanızdan randevu alsın."
-          >
+          <EmptyState icon={CalendarClock} title="Henüz randevu yok" description="Yeni randevu oluşturun veya müşterileriniz online booking sayfanızdan randevu alsın.">
             <Button onClick={() => setShowModal(true)}><Plus size={18} /> İlk randevuyu oluştur</Button>
           </EmptyState>
         ) : (
@@ -168,6 +217,12 @@ export default function AppointmentsPage() {
                   {apt.status === "confirmed" && (
                     <Button variant="secondary" className="h-7 text-xs" onClick={() => updateStatus(apt.id, "completed")}>Tamamla</Button>
                   )}
+                  <button onClick={() => openEdit(apt)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-400/10">
+                    <Edit3 size={14} />
+                  </button>
+                  <button onClick={() => removeAppointment(apt.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </article>
             ))}
@@ -175,17 +230,13 @@ export default function AppointmentsPage() {
         )}
       </main>
 
+      {/* Oluşturma Modalı */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Yeni randevu oluştur">
         <div className="grid gap-4">
-          {/* Müşteri seçimi */}
           <div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-semibold">Müşteri</label>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, useNewCustomer: !form.useNewCustomer })}
-                className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300"
-              >
+              <button type="button" onClick={() => setForm({ ...form, useNewCustomer: !form.useNewCustomer })} className="text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">
                 {form.useNewCustomer ? "Mevcut müşteri seç" : "+ Yeni müşteri"}
               </button>
             </div>
@@ -201,8 +252,6 @@ export default function AppointmentsPage() {
               </select>
             )}
           </div>
-
-          {/* Hizmet */}
           <div>
             <label className="text-sm font-semibold">Hizmet</label>
             <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.service_id} onChange={(e) => setForm({ ...form, service_id: e.target.value })}>
@@ -210,8 +259,6 @@ export default function AppointmentsPage() {
               {services.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.duration_minutes} dk - {formatMoney(s.price_cents)})</option>)}
             </select>
           </div>
-
-          {/* Personel */}
           <div>
             <label className="text-sm font-semibold">Personel</label>
             <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })}>
@@ -219,8 +266,6 @@ export default function AppointmentsPage() {
               {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
             </select>
           </div>
-
-          {/* Tarih ve Saat */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-semibold">Tarih</label>
@@ -231,15 +276,57 @@ export default function AppointmentsPage() {
               <input type="time" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
             </div>
           </div>
-
-          {/* Not */}
           <div>
             <label className="text-sm font-semibold">Not (opsiyonel)</label>
             <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Ek bilgi..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
+          <Button onClick={handleCreate} disabled={submitting} className="mt-2">
+            <Plus size={18} /> {submitting ? "Oluşturuluyor..." : "Randevu oluştur"}
+          </Button>
+        </div>
+      </Modal>
 
-          <Button onClick={handleCreate} className="mt-2">
-            <Plus size={18} /> Randevu oluştur
+      {/* Düzenleme Modalı */}
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Randevu düzenle">
+        <div className="grid gap-4">
+          <div>
+            <label className="text-sm font-semibold">Hizmet</label>
+            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.service_id} onChange={(e) => setEditForm({ ...editForm, service_id: e.target.value })}>
+              {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold">Personel</label>
+            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.employee_id} onChange={(e) => setEditForm({ ...editForm, employee_id: e.target.value })}>
+              {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold">Tarih</label>
+              <input type="date" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Saat</label>
+              <input type="time" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-semibold">Durum</label>
+            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+              <option value="pending">Bekliyor</option>
+              <option value="confirmed">Onaylandı</option>
+              <option value="completed">Tamamlandı</option>
+              <option value="cancelled">İptal</option>
+              <option value="no_show">Gelmedi</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold">Not</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Ek bilgi..." value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+          </div>
+          <Button onClick={handleEdit} disabled={submitting} className="mt-2">
+            {submitting ? "Kaydediliyor..." : "Kaydet"}
           </Button>
         </div>
       </Modal>

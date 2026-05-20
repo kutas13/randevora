@@ -33,7 +33,15 @@ export function DailyView({ date }: { date: Date }) {
         .in("status", ["pending", "confirmed"])
         .order("starts_at");
 
-      setAppointments(data || []);
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        starts_at: row.starts_at,
+        ends_at: row.ends_at,
+        customer: Array.isArray(row.customer) ? row.customer[0] || null : row.customer,
+        employee: Array.isArray(row.employee) ? row.employee[0] || null : row.employee,
+        service: Array.isArray(row.service) ? row.service[0] || null : row.service,
+      }));
+      setAppointments(mapped);
     }
     load();
   }, [date]);

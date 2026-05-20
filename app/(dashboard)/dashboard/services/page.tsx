@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Palette, Plus, Power, Timer, Trash2 } from "lucide-react";
+import { Edit3, Palette, Plus, Power, Timer, Trash2 } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -26,7 +26,11 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
+  const [editForm, setEditForm] = useState({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false, active: true });
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
@@ -40,10 +44,8 @@ export default function ServicesPage() {
   }
 
   async function handleAdd() {
-    if (!businessId) {
-      toast("İşletme bilgisi bulunamadı.", "error");
-      return;
-    }
+    if (!businessId) { toast("İşletme bilgisi bulunamadı.", "error"); return; }
+    setSubmitting(true);
 
     const { error } = await supabase.from("services").insert({
       name: form.name,
@@ -54,30 +56,62 @@ export default function ServicesPage() {
       business_id: businessId,
     });
 
-    if (error) {
-      toast("Hizmet eklenemedi: " + error.message, "error");
-      return;
+    if (error) { toast("Hizmet eklenemedi: " + error.message, "error"); }
+    else {
+      toast("Hizmet eklendi!", "success");
+      setForm({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
+      setShowModal(false);
+      loadServices();
     }
-
-    toast("Hizmet eklendi!", "success");
-    setForm({ name: "", duration: "45", price: "700", color: "#0f766e", priceVariable: false });
-    setShowModal(false);
-    loadServices();
+    setSubmitting(false);
   }
 
-  async function toggleActive(id: string, current: boolean) {
-    await supabase.from("services").update({ active: !current }).eq("id", id);
-    setServices(services.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+  function openEdit(service: Service) {
+    setEditingService(service);
+    setEditForm({
+      name: service.name,
+      duration: String(service.duration_minutes),
+      price: String(service.price_cents / 100),
+      color: service.color,
+      priceVariable: service.price_variable,
+      active: service.active,
+    });
+    setEditModal(true);
+  }
+
+  async function handleEdit() {
+    if (!editingService) return;
+    setSubmitting(true);
+
+    const { error } = await supabase.from("services").update({
+      name: editForm.name,
+      duration_minutes: Number(editForm.duration),
+      price_cents: Number(editForm.price) * 100,
+      price_variable: editForm.priceVariable,
+      color: editForm.color,
+      active: editForm.active,
+    }).eq("id", editingService.id);
+
+    if (error) { toast("Güncellenemedi: " + error.message, "error"); }
+    else { toast("Hizmet güncellendi!", "success"); setEditModal(false); loadServices(); }
+    setSubmitting(false);
   }
 
   async function removeService(id: string) {
-    const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) {
-      toast("Silinemedi: " + error.message, "error");
-      return;
-    }
+    if (!confirm("Bu hizmeti ve ilişkili randevularını silmek istediğinize emin misiniz?")) return;
+
+    const res = await fetch("/api/delete-service", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ service_id: id }),
+    });
+    const result = await res.json();
+    if (!res.ok) { toast("Silinemedi: " + (result.error || "Hata"), "error"); return; }
+    toast("Hizmet silindi.", "success");
     setServices(services.filter((s) => s.id !== id));
   }
+
+  const colors = ["#0f766e", "#f97316", "#7c3aed", "#2563eb", "#dc2626", "#0891b2"];
 
   if (loading) return <><Topbar title="Hizmetler" subtitle="Yükleniyor..." /><main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main></>;
 
@@ -91,28 +125,22 @@ export default function ServicesPage() {
         </div>
 
         {services.length === 0 ? (
-          <EmptyState
-            icon={Palette}
-            title="Henüz hizmet eklenmemiş"
-            description="İşletmenizin sunduğu hizmetleri ekleyin. Müşterileriniz online booking sayfasında bu hizmetleri görecek."
-          >
+          <EmptyState icon={Palette} title="Henüz hizmet eklenmemiş" description="İşletmenizin sunduğu hizmetleri ekleyin.">
             <Button onClick={() => setShowModal(true)}><Plus size={18} /> İlk hizmeti ekle</Button>
           </EmptyState>
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {services.map((service, index) => (
-              <article
-                key={service.id}
-                className={`glass animate-fade-in rounded-xl p-5 transition-all duration-200 hover:shadow-lg stagger-${Math.min(index + 1, 4)}`}
-              >
+              <article key={service.id} className={`glass animate-fade-in rounded-xl p-5 transition-all duration-200 hover:shadow-lg stagger-${Math.min(index + 1, 4)}`}>
                 <div className="flex items-start justify-between gap-3">
                   <span className="size-4 rounded-full shadow-sm" style={{ background: service.color }} />
                   <div className="flex items-center gap-2">
-                    <button onClick={() => toggleActive(service.id, service.active)} className="transition-transform hover:scale-110">
-                      <Badge variant={service.active ? "success" : "default"}>
-                        <Power size={12} />
-                        {service.active ? "Aktif" : "Pasif"}
-                      </Badge>
+                    <Badge variant={service.active ? "success" : "default"}>
+                      <Power size={12} />
+                      {service.active ? "Aktif" : "Pasif"}
+                    </Badge>
+                    <button onClick={() => openEdit(service)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-400/10">
+                      <Edit3 size={14} />
                     </button>
                     <button onClick={() => removeService(service.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
                       <Trash2 size={14} />
@@ -135,6 +163,7 @@ export default function ServicesPage() {
         )}
       </main>
 
+      {/* Ekleme Modalı */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Yeni hizmet ekle">
         <div className="grid gap-4">
           <div>
@@ -152,24 +181,58 @@ export default function ServicesPage() {
             </div>
           </div>
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3 transition hover:border-[var(--accent)]">
-            <input
-              type="checkbox"
-              checked={form.priceVariable}
-              onChange={(e) => setForm({ ...form, priceVariable: e.target.checked })}
-              className="size-4 rounded accent-teal-600"
-            />
+            <input type="checkbox" checked={form.priceVariable} onChange={(e) => setForm({ ...form, priceVariable: e.target.checked })} className="size-4 rounded accent-teal-600" />
             <span className="text-sm font-medium">Fiyat değişkenlik gösterebilir</span>
           </label>
           <div>
             <label className="text-sm font-semibold">Renk</label>
             <div className="mt-2 flex gap-2">
-              {["#0f766e", "#f97316", "#7c3aed", "#2563eb", "#dc2626", "#0891b2"].map((c) => (
+              {colors.map((c) => (
                 <button key={c} onClick={() => setForm({ ...form, color: c })} className={`size-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`} style={{ background: c }} />
               ))}
             </div>
           </div>
-          <Button onClick={handleAdd} disabled={!form.name.trim()} className="mt-2">
-            <Plus size={18} /> Hizmet ekle
+          <Button onClick={handleAdd} disabled={!form.name.trim() || submitting} className="mt-2">
+            <Plus size={18} /> {submitting ? "Ekleniyor..." : "Hizmet ekle"}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Düzenleme Modalı */}
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Hizmet düzenle">
+        <div className="grid gap-4">
+          <div>
+            <label className="text-sm font-semibold">Hizmet adı</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold">Süre (dk)</label>
+              <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Fiyat (TL)</label>
+              <input type="number" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
+            <input type="checkbox" checked={editForm.priceVariable} onChange={(e) => setEditForm({ ...editForm, priceVariable: e.target.checked })} className="size-4 rounded accent-teal-600" />
+            <span className="text-sm font-medium">Fiyat değişkenlik gösterebilir</span>
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
+            <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} className="size-4 rounded accent-teal-600" />
+            <span className="text-sm font-medium">Aktif</span>
+          </label>
+          <div>
+            <label className="text-sm font-semibold">Renk</label>
+            <div className="mt-2 flex gap-2">
+              {colors.map((c) => (
+                <button key={c} onClick={() => setEditForm({ ...editForm, color: c })} className={`size-8 rounded-full transition-transform hover:scale-110 ${editForm.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`} style={{ background: c }} />
+              ))}
+            </div>
+          </div>
+          <Button onClick={handleEdit} disabled={!editForm.name.trim() || submitting} className="mt-2">
+            {submitting ? "Kaydediliyor..." : "Kaydet"}
           </Button>
         </div>
       </Modal>

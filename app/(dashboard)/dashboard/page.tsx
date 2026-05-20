@@ -77,7 +77,7 @@ export default async function DashboardPage() {
           <EmptyState
             title="Hoş geldiniz!"
             description="İşletmeniz henüz yeni. Hizmet, çalışan ve müşteri ekleyerek başlayın."
-            icon="calendar"
+            icon={CalendarClock}
           />
         ) : (
           <>

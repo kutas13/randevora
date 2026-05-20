@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarDays,
   LayoutDashboard,
+  Link2,
   LogOut,
   Menu,
   Scissors,
@@ -34,6 +35,7 @@ const items: NavItem[] = [
   { label: "Çalışanlar", href: "/dashboard/employees", icon: Users, roles: ["owner", "admin"] },
   { label: "Hizmetler", href: "/dashboard/services", icon: Scissors, roles: ["owner", "admin"] },
   { label: "Müşteriler", href: "/dashboard/customers", icon: Building2, roles: ["owner", "admin", "employee"] },
+  { label: "Randevu Linki", href: "/dashboard/booking-link", icon: Link2, roles: ["owner", "admin", "employee"] },
   { label: "Ayarlar", href: "/dashboard/settings", icon: Settings, roles: ["owner"] },
   { label: "Ödeme Planı", href: "/dashboard/billing", icon: WalletCards, roles: ["owner"] },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Edit3, Plus, Trash2, Users } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -26,8 +26,11 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ full_name: "", title: "", phone: "", email: "", password: "", role: "employee" });
+  const [editForm, setEditForm] = useState({ full_name: "", title: "", phone: "", role: "employee", active: true });
   const { businessId } = useBusinessId();
   const supabase = createClient();
   const { toast } = useToast();
@@ -46,9 +49,7 @@ export default function EmployeesPage() {
     if (form.password.length < 6) { toast("Şifre en az 6 karakter olmalı.", "error"); return; }
 
     setSubmitting(true);
-
     try {
-      // API ile personel hesabı oluştur
       const res = await fetch("/api/create-employee", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,15 +63,10 @@ export default function EmployeesPage() {
           business_id: businessId,
         }),
       });
-
       const result = await res.json();
+      if (!res.ok) { toast(result.error || "Çalışan eklenemedi.", "error"); return; }
 
-      if (!res.ok) {
-        toast(result.error || "Çalışan eklenemedi.", "error");
-        return;
-      }
-
-      toast("Çalışan eklendi! Artık giriş yapabilir.", "success");
+      toast("Çalışan eklendi!", "success");
       setForm({ full_name: "", title: "", phone: "", email: "", password: "", role: "employee" });
       setShowModal(false);
       loadEmployees();
@@ -79,12 +75,38 @@ export default function EmployeesPage() {
     }
   }
 
+  function openEdit(emp: Employee) {
+    setEditingEmp(emp);
+    setEditForm({ full_name: emp.full_name, title: emp.title || "", phone: emp.phone || "", role: emp.role, active: emp.active });
+    setEditModal(true);
+  }
+
+  async function handleEdit() {
+    if (!editingEmp) return;
+    setSubmitting(true);
+    const { error } = await supabase.from("employees").update({
+      full_name: editForm.full_name,
+      title: editForm.title || null,
+      phone: editForm.phone || null,
+      role: editForm.role,
+      active: editForm.active,
+    }).eq("id", editingEmp.id);
+
+    if (error) { toast("Güncellenemedi: " + error.message, "error"); }
+    else { toast("Çalışan güncellendi!", "success"); setEditModal(false); loadEmployees(); }
+    setSubmitting(false);
+  }
+
   async function removeEmployee(id: string) {
-    const { error } = await supabase.from("employees").delete().eq("id", id);
-    if (error) {
-      toast("Silinemedi: " + error.message, "error");
-      return;
-    }
+    if (!confirm("Bu çalışanı ve ilişkili randevularını silmek istediğinize emin misiniz?")) return;
+    const res = await fetch("/api/delete-employee", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employee_id: id }),
+    });
+    const result = await res.json();
+    if (!res.ok) { toast("Silinemedi: " + (result.error || "Hata"), "error"); return; }
+    toast("Çalışan silindi.", "success");
     setEmployees(employees.filter((e) => e.id !== id));
   }
 
@@ -100,11 +122,7 @@ export default function EmployeesPage() {
         </div>
 
         {employees.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="Henüz çalışan eklenmemiş"
-            description="Ekibinizi ekleyin, randevu atamaları yapabilin."
-          >
+          <EmptyState icon={Users} title="Henüz çalışan eklenmemiş" description="Ekibinizi ekleyin, randevu atamaları yapabilin.">
             <Button onClick={() => setShowModal(true)}><Plus size={18} /> İlk çalışanı ekle</Button>
           </EmptyState>
         ) : (
@@ -119,9 +137,14 @@ export default function EmployeesPage() {
                       <small className="text-[var(--muted)]">{emp.title || "Personel"}</small>
                     </div>
                   </div>
-                  <button onClick={() => removeEmployee(emp.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(emp)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-400/10">
+                      <Edit3 size={14} />
+                    </button>
+                    <button onClick={() => removeEmployee(emp.id)} className="flex size-7 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <Badge variant={emp.active ? "success" : "default"}>{emp.active ? "Aktif" : "Pasif"}</Badge>
@@ -135,6 +158,7 @@ export default function EmployeesPage() {
         )}
       </main>
 
+      {/* Ekleme Modalı */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Yeni çalışan ekle">
         <div className="grid gap-4">
           <div>
@@ -171,6 +195,40 @@ export default function EmployeesPage() {
           <p className="text-xs text-[var(--muted)]">Personel bu e-posta ve şifreyle giriş yaparak panele erişebilir.</p>
           <Button onClick={handleAdd} disabled={!form.full_name.trim() || !form.email.trim() || !form.password.trim() || submitting} className="mt-2">
             <Plus size={18} /> {submitting ? "Oluşturuluyor..." : "Çalışan ekle"}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Düzenleme Modalı */}
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Çalışan düzenle">
+        <div className="grid gap-4">
+          <div>
+            <label className="text-sm font-semibold">Ad Soyad</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-sm font-semibold">Ünvan</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold">Telefon</label>
+              <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Rol</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                <option value="employee">Personel</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
+            <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} className="size-4 rounded accent-teal-600" />
+            <span className="text-sm font-medium">Aktif</span>
+          </label>
+          <Button onClick={handleEdit} disabled={!editForm.full_name.trim() || submitting} className="mt-2">
+            {submitting ? "Kaydediliyor..." : "Kaydet"}
           </Button>
         </div>
       </Modal>
