@@ -60,6 +60,15 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
 
           <form action={registerAction} className="mt-6 grid gap-4">
             <div>
+              <label className="text-sm font-semibold">İsim Soyisim</label>
+              <input
+                name="fullName"
+                className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+                placeholder="Adınız ve soyadınız"
+                required
+              />
+            </div>
+            <div>
               <label className="text-sm font-semibold">İşletme adı</label>
               <input
                 name="businessName"

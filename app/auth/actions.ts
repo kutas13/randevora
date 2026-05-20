@@ -11,6 +11,7 @@ const loginSchema = z.object({
 });
 
 const registerSchema = loginSchema.extend({
+  fullName: z.string().min(2),
   businessName: z.string().min(2),
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/),
   category: z.string().optional(),
@@ -100,6 +101,7 @@ export async function registerAction(formData: FormData) {
 
   try {
     const values = registerSchema.parse({
+      fullName: formData.get("fullName"),
       businessName: formData.get("businessName"),
       slug: formData.get("slug"),
       email: formData.get("email"),
@@ -127,6 +129,7 @@ export async function registerAction(formData: FormData) {
       password: values.password,
       email_confirm: true,
       user_metadata: {
+        full_name: values.fullName,
         business_name: values.businessName,
         business_slug: values.slug,
         category: values.category,
@@ -165,7 +168,7 @@ export async function registerAction(formData: FormData) {
       id: userId,
       business_id: business.id,
       role: "owner",
-      full_name: values.businessName,
+      full_name: values.fullName,
       email: values.email,
     });
 
@@ -173,7 +176,7 @@ export async function registerAction(formData: FormData) {
     await admin.from("employees").insert({
       business_id: business.id,
       user_id: userId,
-      full_name: values.businessName,
+      full_name: values.fullName,
       role: "admin",
       active: true,
     });
