@@ -225,7 +225,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                 <span className="size-3 rounded-full" style={{ background: s.color }} />
                 <div>
                   <strong className="block text-sm">{s.name}</strong>
-                  <span className="text-xs text-[var(--muted)]">{s.duration_minutes} dakika</span>
+                  <span className="text-xs text-[var(--muted)]">{s.duration_minutes >= 60 && s.duration_minutes % 60 === 0 ? `${s.duration_minutes / 60} saat` : `${s.duration_minutes} dakika`}</span>
                 </div>
               </div>
               <div className="text-right">
@@ -307,7 +307,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
           {selectedService && date && (
             <div className="rounded-lg bg-[var(--panel-strong)] p-3 text-sm">
-              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Süre: <strong>{selectedService.duration_minutes} dakika</strong>
+              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Süre: <strong>{selectedService.duration_minutes >= 60 && selectedService.duration_minutes % 60 === 0 ? `${selectedService.duration_minutes / 60} saat` : `${selectedService.duration_minutes} dakika`}</strong>
             </div>
           )}
 

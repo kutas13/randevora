@@ -92,7 +92,7 @@ export default async function BusinessSlugPage({ params }: { params: Promise<{ s
                     <span className="size-3 rounded-full" style={{ background: service.color || "#888" }} />
                     <span>
                       <strong className="block">{service.name}</strong>
-                      <small className="flex items-center gap-1 text-[var(--muted)]"><Clock size={13} /> {service.duration_min} dk</small>
+                      <small className="flex items-center gap-1 text-[var(--muted)]"><Clock size={13} /> {service.duration_min >= 60 && service.duration_min % 60 === 0 ? `${service.duration_min / 60} saat` : `${service.duration_min} dk`}</small>
                     </span>
                   </span>
                   <strong className="text-lg">{formatMoney(service.price_cents)}</strong>
