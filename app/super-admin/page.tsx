@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Building2, Check, LogOut, Search, Shield, TrendingUp, Users, X } from "lucide-react";
+import Link from "next/link";
+import { Activity, Building2, Check, CreditCard, LogOut, Search, Shield, TrendingUp, Users, X } from "lucide-react";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,6 +123,11 @@ export default function SuperAdminPage() {
             {pendingCount > 0 && (
               <Badge variant="warning">{pendingCount} onay bekliyor</Badge>
             )}
+            <Link href="/super-admin/payments">
+              <Button variant="secondary">
+                <CreditCard size={18} /> Ödeme Takibi
+              </Button>
+            </Link>
             <Button variant="ghost" onClick={handleLogout}>
               <LogOut size={18} /> Çıkış
             </Button>
