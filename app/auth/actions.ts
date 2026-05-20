@@ -96,80 +96,94 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function registerAction(formData: FormData) {
-  const values = registerSchema.parse({
-    businessName: formData.get("businessName"),
-    slug: formData.get("slug"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    category: formData.get("category") || "small_business",
-  });
+  let redirectUrl = "/pending-approval";
 
-  const admin = createAdminClient();
+  try {
+    const values = registerSchema.parse({
+      businessName: formData.get("businessName"),
+      slug: formData.get("slug"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+      category: formData.get("category") || "small_business",
+    });
 
-  // Slug benzersizliğini kontrol et
-  const { data: existingBusiness } = await admin
-    .from("businesses")
-    .select("id")
-    .eq("slug", values.slug)
-    .single();
+    const admin = createAdminClient();
 
-  if (existingBusiness) {
-    redirect(`/register?error=${encodeURIComponent("Bu slug zaten kullanımda. Başka bir slug deneyin.")}`);
-  }
+    // Slug benzersizliğini kontrol et
+    const { data: existingBusiness } = await admin
+      .from("businesses")
+      .select("id")
+      .eq("slug", values.slug)
+      .single();
 
-  // Admin API ile kullanıcı oluştur (trigger'a bağımlı değil)
-  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-    email: values.email,
-    password: values.password,
-    email_confirm: true,
-    user_metadata: {
-      business_name: values.businessName,
-      business_slug: values.slug,
-      category: values.category,
+    if (existingBusiness) {
+      redirectUrl = `/register?error=${encodeURIComponent("Bu slug zaten kullanımda. Başka bir slug deneyin.")}`;
+      redirect(redirectUrl);
+    }
+
+    // Admin API ile kullanıcı oluştur
+    const { data: newUser, error: createError } = await admin.auth.admin.createUser({
+      email: values.email,
+      password: values.password,
+      email_confirm: true,
+      user_metadata: {
+        business_name: values.businessName,
+        business_slug: values.slug,
+        category: values.category,
+        role: "owner",
+      },
+    });
+
+    if (createError) {
+      redirectUrl = `/register?error=${encodeURIComponent(createError.message)}`;
+      redirect(redirectUrl);
+    }
+
+    const userId = newUser.user.id;
+
+    // İşletmeyi oluştur (status: pending)
+    const { data: business, error: bizError } = await admin
+      .from("businesses")
+      .insert({
+        owner_id: userId,
+        name: values.businessName,
+        slug: values.slug,
+        category: values.category,
+        status: "pending",
+        plan: "starter",
+      })
+      .select("id")
+      .single();
+
+    if (bizError) {
+      redirectUrl = `/register?error=${encodeURIComponent(bizError.message)}`;
+      redirect(redirectUrl);
+    }
+
+    // Kullanıcı profilini oluştur
+    await admin.from("users").insert({
+      id: userId,
+      business_id: business.id,
       role: "owner",
-    },
-  });
+      full_name: values.businessName,
+      email: values.email,
+    });
 
-  if (createError) {
-    redirect(`/register?error=${encodeURIComponent(createError.message)}`);
+    // Employee kaydı oluştur (owner = admin personel olarak da geçer)
+    await admin.from("employees").insert({
+      business_id: business.id,
+      user_id: userId,
+      full_name: values.businessName,
+      role: "admin",
+      active: true,
+    });
+
+  } catch (e: any) {
+    if (e?.digest?.startsWith("NEXT_REDIRECT")) throw e;
+    redirectUrl = `/register?error=${encodeURIComponent(e?.message || "Bir hata oluştu.")}`;
   }
 
-  const userId = newUser.user.id;
-
-  // İşletmeyi oluştur (status: pending)
-  const { data: business, error: bizError } = await admin
-    .from("businesses")
-    .insert({
-      owner_id: userId,
-      name: values.businessName,
-      slug: values.slug,
-      category: values.category,
-      status: "pending",
-    })
-    .select("id")
-    .single();
-
-  if (bizError) {
-    redirect(`/register?error=${encodeURIComponent(bizError.message)}`);
-  }
-
-  // Kullanıcı profilini oluştur
-  await admin.from("users").insert({
-    id: userId,
-    business_id: business.id,
-    role: "owner",
-    full_name: values.businessName,
-    email: values.email,
-  });
-
-  // Abonelik oluştur
-  await admin.from("subscriptions").insert({
-    business_id: business.id,
-    plan: "free",
-    status: "active",
-  });
-
-  redirect("/pending-approval");
+  redirect(redirectUrl);
 }
 
 export async function logoutAction() {
