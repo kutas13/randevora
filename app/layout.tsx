@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: "Randevora | Online Randevu Sistemi",
   description: "Berberlerden danışmanlara kadar her işletme için ultra hızlı online randevu sistemi. Randevunuz bizde.",
   keywords: ["randevu", "booking", "berber", "kuaför", "güzellik merkezi", "online randevu", "randevora"],
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
