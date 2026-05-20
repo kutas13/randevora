@@ -26,10 +26,23 @@ type PaymentRecord = {
   business?: { name: string } | null;
 };
 
-const PLAN_PRICES: Record<string, number> = {
-  starter: 999,
-  pro: 1999,
-};
+const PLAN_OPTIONS = [
+  { value: "starter", label: "Başlangıç", price: 999 },
+  { value: "pro", label: "Profesyonel", price: 1999 },
+];
+
+const MONTHS = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+];
+
+function getPlanPrice(plan: string) {
+  return PLAN_OPTIONS.find((p) => p.value === plan)?.price || 999;
+}
+
+function getPlanLabel(plan: string) {
+  return PLAN_OPTIONS.find((p) => p.value === plan)?.label || plan;
+}
 
 export default function PaymentsPage() {
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
@@ -39,6 +52,11 @@ export default function PaymentsPage() {
   const [selectedPlan, setSelectedPlan] = useState("starter");
   const [paymentDay, setPaymentDay] = useState(1);
   const [showAssign, setShowAssign] = useState(false);
+
+  // Ay filtresi
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState(now.getMonth());
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
 
   const supabase = createClient();
   const { toast } = useToast();
@@ -58,7 +76,7 @@ export default function PaymentsPage() {
         .from("payments")
         .select("*, business:businesses(name)")
         .order("paid_at", { ascending: false })
-        .limit(50),
+        .limit(200),
     ]);
 
     setBusinesses(bizRes.data || []);
@@ -91,14 +109,20 @@ export default function PaymentsPage() {
     const biz = businesses.find((b) => b.id === businessId);
     if (!biz) return;
 
-    const amount = PLAN_PRICES[biz.plan] || 999;
-    const now = new Date();
-    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const amount = getPlanPrice(biz.plan);
+    const period = `${filterYear}-${String(filterMonth + 1).padStart(2, "0")}`;
+
+    // Aynı dönem için zaten ödeme var mı kontrol et
+    const existing = payments.find((p) => p.business_id === businessId && p.period === period);
+    if (existing) {
+      toast("Bu dönem için zaten ödeme kaydı var.", "error");
+      return;
+    }
 
     const { error } = await supabase.from("payments").insert({
       business_id: businessId,
       amount,
-      paid_at: now.toISOString(),
+      paid_at: new Date().toISOString(),
       period,
     });
 
@@ -107,31 +131,22 @@ export default function PaymentsPage() {
       return;
     }
 
-    toast(`${biz.name} - ${amount} TL ödeme kaydedildi!`, "success");
+    toast(`${biz.name} - ${amount} TL (${MONTHS[filterMonth]} ${filterYear}) ödeme kaydedildi!`, "success");
     load();
   }
 
-  function getDueBusinesses() {
-    const today = new Date().getDate();
-    return businesses.filter((b) => {
-      if (!b.payment_day) return false;
-      return b.payment_day === today || b.payment_day === today + 1 || b.payment_day === today + 2;
-    });
-  }
+  // Seçili ay için ödeme yapan/yapmayan işletmeler
+  const selectedPeriod = `${filterYear}-${String(filterMonth + 1).padStart(2, "0")}`;
+  const paidThisPeriod = payments.filter((p) => p.period === selectedPeriod);
+  const paidBizIds = new Set(paidThisPeriod.map((p) => p.business_id));
+  const unpaidBusinesses = businesses.filter((b) => !paidBizIds.has(b.id));
+  const paidBusinesses = businesses.filter((b) => paidBizIds.has(b.id));
 
   const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const thisMonthPayments = payments.filter((p) => {
-    const now = new Date();
-    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    return p.period === period;
-  });
-  const thisMonthRevenue = thisMonthPayments.reduce((sum, p) => sum + p.amount, 0);
-  const dueBusinesses = getDueBusinesses();
+  const monthRevenue = paidThisPeriod.reduce((sum, p) => sum + p.amount, 0);
 
   if (loading) {
-    return (
-      <div className="min-h-screen p-8 text-center text-[var(--muted)]">Yükleniyor...</div>
-    );
+    return <div className="min-h-screen p-8 text-center text-[var(--muted)]">Yükleniyor...</div>;
   }
 
   return (
@@ -155,11 +170,31 @@ export default function PaymentsPage() {
 
       <main className="grid gap-5 p-4 md:p-8">
         {/* Metrikler */}
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-3">
           <MetricCard title="Toplam Gelir" value={`${totalRevenue.toLocaleString("tr-TR")} TL`} delta="Tüm zamanlar" icon={<TrendingUp size={19} />} />
-          <MetricCard title="Bu Ay Gelir" value={`${thisMonthRevenue.toLocaleString("tr-TR")} TL`} delta={`${thisMonthPayments.length} ödeme`} icon={<CreditCard size={19} />} tone="indigo" />
-          <MetricCard title="Aktif İşletme" value={String(businesses.length)} delta="Onaylı işletmeler" icon={<Check size={19} />} tone="neutral" />
-          <MetricCard title="Ödeme Yaklaşan" value={String(dueBusinesses.length)} delta="Bugün/yarın" icon={<AlertCircle size={19} />} tone="orange" />
+          <MetricCard title={`${MONTHS[filterMonth]} ${filterYear} Geliri`} value={`${monthRevenue.toLocaleString("tr-TR")} TL`} delta={`${paidThisPeriod.length} ödeme`} icon={<CreditCard size={19} />} tone="indigo" />
+          <MetricCard title="Ödeme bekleyen" value={String(unpaidBusinesses.length)} delta={`${MONTHS[filterMonth]} ayı`} icon={<AlertCircle size={19} />} tone="orange" />
+        </section>
+
+        {/* Ay Seçici */}
+        <section className="flex flex-wrap items-center gap-3">
+          <select
+            className="h-10 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm font-semibold outline-none"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(parseInt(e.target.value))}
+          >
+            {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+          </select>
+          <select
+            className="h-10 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm font-semibold outline-none"
+            value={filterYear}
+            onChange={(e) => setFilterYear(parseInt(e.target.value))}
+          >
+            {[2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <span className="text-sm text-[var(--muted)]">
+            {paidBusinesses.length}/{businesses.length} işletme ödedi
+          </span>
         </section>
 
         {/* Paket Atama */}
@@ -187,8 +222,9 @@ export default function PaymentsPage() {
                   value={selectedPlan}
                   onChange={(e) => setSelectedPlan(e.target.value)}
                 >
-                  <option value="starter">Başlangıç - 999 TL/ay</option>
-                  <option value="pro">Profesyonel - 1999 TL/ay</option>
+                  {PLAN_OPTIONS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label} - {p.price} TL/ay</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -209,20 +245,23 @@ export default function PaymentsPage() {
           </section>
         )}
 
-        {/* Ödeme Yaklaşanlar */}
-        {dueBusinesses.length > 0 && (
-          <section className="glass rounded-xl border-l-4 border-l-orange-500 p-5">
-            <h2 className="flex items-center gap-2 text-lg font-bold text-orange-600">
-              <AlertCircle size={20} /> Ödeme Hatırlatması
-            </h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Bu işletmelerin ödeme günü yaklaştı veya bugün:</p>
+        {/* Ödeme bekleyenler */}
+        <section className="glass rounded-xl p-5">
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <AlertCircle size={20} className="text-orange-500" />
+            Ödeme Bekleyenler — {MONTHS[filterMonth]} {filterYear}
+          </h2>
+          {unpaidBusinesses.length === 0 ? (
+            <p className="mt-3 text-sm text-green-600">Tüm işletmeler bu ay ödeme yaptı!</p>
+          ) : (
             <div className="mt-3 grid gap-2">
-              {dueBusinesses.map((biz) => (
-                <div key={biz.id} className="flex items-center justify-between rounded-lg bg-orange-50 p-3 dark:bg-orange-400/10">
+              {unpaidBusinesses.map((biz) => (
+                <div key={biz.id} className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-400/20 dark:bg-orange-400/10">
                   <div>
                     <strong>{biz.name}</strong>
                     <span className="ml-2 text-sm text-[var(--muted)]">
-                      Paket: {biz.plan === "pro" ? "Profesyonel" : "Başlangıç"} · Ödeme günü: {biz.payment_day}
+                      {getPlanLabel(biz.plan)} · {getPlanPrice(biz.plan)} TL
+                      {biz.payment_day && <> · Her ayın {biz.payment_day}. günü</>}
                     </span>
                   </div>
                   <Button className="h-8 text-xs" onClick={() => handleMarkPaid(biz.id)}>
@@ -231,72 +270,30 @@ export default function PaymentsPage() {
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        {/* İşletme Listesi */}
-        <section className="glass rounded-xl p-5">
-          <h2 className="text-lg font-bold">İşletmeler & Paketler</h2>
-          <div className="mt-4 grid gap-2">
-            {businesses.map((biz) => {
-              const price = PLAN_PRICES[biz.plan] || 0;
-              const lastPayment = payments.find((p) => p.business_id === biz.id);
-              return (
-                <div key={biz.id} className="flex items-center justify-between rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-neutral-800 to-neutral-950 text-xs font-bold text-white dark:from-white dark:to-neutral-200 dark:text-neutral-950">
-                      {biz.name.charAt(0).toUpperCase()}
-                    </span>
-                    <div>
-                      <strong className="block text-sm">{biz.name}</strong>
-                      <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                        <Badge>{biz.plan === "pro" ? "Profesyonel" : "Başlangıç"}</Badge>
-                        <span>{price} TL/ay</span>
-                        {biz.payment_day && (
-                          <span className="flex items-center gap-1"><Calendar size={11} /> Her ayın {biz.payment_day}. günü</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {lastPayment ? (
-                      <span className="text-xs text-green-600">Son ödeme: {new Date(lastPayment.paid_at).toLocaleDateString("tr-TR")}</span>
-                    ) : (
-                      <span className="text-xs text-red-500">Henüz ödeme yok</span>
-                    )}
-                    <Button variant="secondary" className="h-8 text-xs" onClick={() => handleMarkPaid(biz.id)}>
-                      <Check size={14} /> Ödeme al
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          )}
         </section>
 
-        {/* Son Ödemeler / Ciro */}
+        {/* Ödeme yapanlar */}
         <section className="glass rounded-xl p-5">
-          <h2 className="text-lg font-bold">Son Ödemeler (Gelir/Ciro)</h2>
-          {payments.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--muted)]">Henüz ödeme kaydı yok.</p>
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <Check size={20} className="text-green-600" />
+            Ödeme Yapanlar — {MONTHS[filterMonth]} {filterYear}
+          </h2>
+          {paidBusinesses.length === 0 ? (
+            <p className="mt-3 text-sm text-[var(--muted)]">Bu ay henüz ödeme kaydı yok.</p>
           ) : (
-            <div className="mt-4 grid gap-2">
-              {payments.map((p) => {
-                const bizName = Array.isArray(p.business) ? (p.business as any)[0]?.name : (p.business as any)?.name;
+            <div className="mt-3 grid gap-2">
+              {paidBusinesses.map((biz) => {
+                const payment = paidThisPeriod.find((p) => p.business_id === biz.id);
                 return (
-                  <div key={p.id} className="flex items-center justify-between rounded-lg border border-[var(--line)] p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-8 items-center justify-center rounded-lg bg-green-100 text-green-700 dark:bg-green-400/15 dark:text-green-300">
-                        <CreditCard size={15} />
-                      </div>
-                      <div>
-                        <strong className="text-sm">{bizName || "İşletme"}</strong>
-                        <p className="text-xs text-[var(--muted)]">{p.period} dönemi</p>
-                      </div>
+                  <div key={biz.id} className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-400/20 dark:bg-green-400/10">
+                    <div>
+                      <strong>{biz.name}</strong>
+                      <span className="ml-2 text-sm text-[var(--muted)]">{getPlanLabel(biz.plan)}</span>
                     </div>
                     <div className="text-right">
-                      <strong className="text-green-700 dark:text-green-300">{p.amount.toLocaleString("tr-TR")} TL</strong>
-                      <p className="text-xs text-[var(--muted)]">{new Date(p.paid_at).toLocaleDateString("tr-TR")}</p>
+                      <strong className="text-green-700 dark:text-green-300">{payment?.amount.toLocaleString("tr-TR")} TL</strong>
+                      {payment && <p className="text-xs text-[var(--muted)]">{new Date(payment.paid_at).toLocaleDateString("tr-TR")}</p>}
                     </div>
                   </div>
                 );
