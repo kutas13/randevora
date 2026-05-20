@@ -11,10 +11,8 @@ const loginSchema = z.object({
 
 const registerSchema = loginSchema.extend({
   businessName: z.string().min(2),
-  slug: z
-    .string()
-    .min(3)
-    .regex(/^[a-z0-9-]+$/),
+  slug: z.string().min(3).regex(/^[a-z0-9-]+$/),
+  category: z.string().optional(),
 });
 
 export async function loginAction(formData: FormData) {
@@ -24,10 +22,50 @@ export async function loginAction(formData: FormData) {
   });
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(values);
+  const { error, data } = await supabase.auth.signInWithPassword(values);
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Kullanıcı rolünü kontrol et
+  const { data: user } = await supabase
+    .from("users")
+    .select("role, business_id")
+    .eq("id", data.user.id)
+    .single();
+
+  if (!user) {
+    redirect(`/login?error=${encodeURIComponent("Kullanıcı profili bulunamadı.")}`);
+  }
+
+  // Super admin direkt panele
+  if (user.role === "super_admin") {
+    redirect("/super-admin");
+  }
+
+  // İşletme onay durumunu kontrol et
+  if (user.business_id) {
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("status")
+      .eq("id", user.business_id)
+      .single();
+
+    if (business?.status === "pending") {
+      await supabase.auth.signOut();
+      redirect(`/login?error=${encodeURIComponent("İşletmeniz henüz onay bekliyor. Super admin onayı sonrası giriş yapabilirsiniz.")}`);
+    }
+
+    if (business?.status === "rejected") {
+      await supabase.auth.signOut();
+      redirect(`/login?error=${encodeURIComponent("İşletme başvurunuz reddedildi. Destek ile iletişime geçin.")}`);
+    }
+
+    if (business?.status === "suspended") {
+      await supabase.auth.signOut();
+      redirect(`/login?error=${encodeURIComponent("İşletmeniz askıya alındı. Destek ile iletişime geçin.")}`);
+    }
   }
 
   redirect("/dashboard");
@@ -39,9 +77,22 @@ export async function registerAction(formData: FormData) {
     slug: formData.get("slug"),
     email: formData.get("email"),
     password: formData.get("password"),
+    category: formData.get("category") || "small_business",
   });
 
   const supabase = await createClient();
+
+  // Slug benzersizliğini kontrol et
+  const { data: existingBusiness } = await supabase
+    .from("businesses")
+    .select("id")
+    .eq("slug", values.slug)
+    .single();
+
+  if (existingBusiness) {
+    redirect(`/register?error=${encodeURIComponent("Bu slug zaten kullanımda. Başka bir slug deneyin.")}`);
+  }
+
   const { error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
@@ -49,6 +100,7 @@ export async function registerAction(formData: FormData) {
       data: {
         business_name: values.businessName,
         business_slug: values.slug,
+        category: values.category,
         role: "owner",
       },
     },
@@ -58,5 +110,11 @@ export async function registerAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/dashboard");
+  redirect("/pending-approval");
+}
+
+export async function logoutAction() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }

@@ -7,6 +7,9 @@ export const demoBusiness: Business = {
   category: "Güzellik ve bakım",
   plan: "pro",
   timezone: "Europe/Istanbul",
+  status: "approved",
+  owner_id: "user_1",
+  created_at: "2026-01-01T00:00:00Z",
 };
 
 export const services: Service[] = [

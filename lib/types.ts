@@ -1,6 +1,7 @@
-export type UserRole = "super_admin" | "owner" | "employee";
+export type UserRole = "super_admin" | "owner" | "admin" | "employee";
 export type PlanCode = "free" | "pro" | "enterprise";
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
+export type BusinessStatus = "pending" | "approved" | "rejected" | "suspended";
 
 export type Business = {
   id: string;
@@ -9,6 +10,18 @@ export type Business = {
   category: string;
   plan: PlanCode;
   timezone: string;
+  status: BusinessStatus;
+  owner_id: string;
+  approved_at?: string;
+  created_at: string;
+};
+
+export type AppUser = {
+  id: string;
+  business_id?: string;
+  role: UserRole;
+  full_name: string;
+  email?: string;
 };
 
 export type Service = {

@@ -7,7 +7,19 @@ const benefits = [
   "30 saniyede kurulum",
   "Kredi kartı gerekmez",
   "Public booking sayfası",
-  "Sınırsız müşteri",
+  "Super admin onayı sonrası aktif",
+];
+
+const categories = [
+  { value: "berber", label: "Berber" },
+  { value: "kuafor", label: "Kuaför" },
+  { value: "nail_studio", label: "Nail Studio" },
+  { value: "guzellik_merkezi", label: "Güzellik Merkezi" },
+  { value: "danismanlik", label: "Danışmanlık" },
+  { value: "freelancer", label: "Freelancer" },
+  { value: "ozel_ders", label: "Özel Ders" },
+  { value: "dovmeci", label: "Dövmeci" },
+  { value: "small_business", label: "Küçük İşletme" },
 ];
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -38,7 +50,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
             <Building2 size={22} />
           </div>
           <h1 className="mt-5 text-3xl font-black lg:mt-0">İşletme oluştur</h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">Unique slug ile kendi booking sayfanız ve tenant veriniz oluşur.</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">Kayıt sonrası super admin onayı ile aktif olacaksınız.</p>
 
           {error && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
@@ -55,6 +67,17 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
                 placeholder="Örn: Nova Studio"
                 required
               />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Kategori</label>
+              <select
+                name="category"
+                className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+              >
+                {categories.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-semibold">Slug (URL)</label>
@@ -92,8 +115,11 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
               />
             </div>
             <Button type="submit" className="h-11 w-full text-base">
-              Ücretsiz başla <ArrowRight size={18} />
+              Başvuru gönder <ArrowRight size={18} />
             </Button>
+            <p className="text-center text-xs text-[var(--muted)]">
+              Başvurunuz super admin onayı sonrası aktif olacaktır.
+            </p>
           </form>
 
           <p className="mt-5 text-center text-sm text-[var(--muted)]">
