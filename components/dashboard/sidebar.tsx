@@ -74,7 +74,7 @@ function SidebarHeader({ businessName }: { businessName: string }) {
     <Link href="/" className="flex items-center gap-3 px-2">
       <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
       <span>
-        <strong className="block text-base">randevora</strong>
+        <strong className="block text-base">Randevora</strong>
         <small className="text-[var(--muted)]">{businessName}</small>
       </span>
     </Link>

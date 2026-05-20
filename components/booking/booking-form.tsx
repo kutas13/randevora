@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/utils";
 type Service = { id: string; name: string; duration_minutes: number; price_cents: number; price_variable: boolean; color: string };
 type Employee = { id: string; full_name: string; title: string | null };
 type WorkingHour = { employee_id: string; weekday: number; starts_at: string; ends_at: string };
-type BlockedDate = { employee_id: string; starts_at: string; ends_at: string };
+type BlockedDate = { employee_id: string; starts_at: string; ends_at: string; reason?: string | null; recurring?: boolean };
 
 type Props = {
   businessId: string;
@@ -18,11 +18,13 @@ type Props = {
   fixedEmployeeId: string | null;
   workingHours?: WorkingHour[];
   blockedDates?: BlockedDate[];
+  bookingWindow?: string;
+  slotCapacity?: number;
 };
 
 type Step = "service" | "employee" | "datetime" | "info" | "done";
 
-export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [] }: Props) {
+export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [], bookingWindow = "weekly", slotCapacity = 1 }: Props) {
   const [step, setStep] = useState<Step>("service");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>(fixedEmployeeId || "");
@@ -36,21 +38,38 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
   const supabase = createClient();
 
-  // Hafta sonuna kadar izin verilen tarih aralığı
+  // Randevu kabul süresi hesapla
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(today);
-  const dayOfWeek = today.getDay();
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  endOfWeek.setDate(today.getDate() + daysUntilSunday);
+  const maxBookingDate = new Date(today);
 
-  // Seçili personelin izinli olduğu günleri kontrol et
+  if (bookingWindow === "monthly") {
+    maxBookingDate.setMonth(maxBookingDate.getMonth() + 1);
+    maxBookingDate.setDate(0); // Ay sonu
+  } else if (bookingWindow === "biweekly") {
+    const dayOfWeek = today.getDay();
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    maxBookingDate.setDate(today.getDate() + daysUntilSunday + 7);
+  } else {
+    const dayOfWeek = today.getDay();
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    maxBookingDate.setDate(today.getDate() + daysUntilSunday);
+  }
+
+  // Seçili personelin izinli olduğu günleri kontrol et (tekrar edilen dahil)
   function isBlockedDay(dateStr: string) {
     const empId = fixedEmployeeId || selectedEmployee;
     if (!empId) return false;
     const d = new Date(dateStr);
+    const dayOfWeek = d.getDay();
     return blockedDates.some((bd) => {
       if (bd.employee_id !== empId) return false;
+      // Tekrar edilen izin: her hafta aynı gün
+      const isRecurring = bd.recurring || (bd.reason && bd.reason.startsWith("recurring:"));
+      if (isRecurring) {
+        const blockedDay = new Date(bd.starts_at).getDay();
+        return dayOfWeek === blockedDay;
+      }
       const start = new Date(bd.starts_at);
       const end = new Date(bd.ends_at);
       start.setHours(0, 0, 0, 0);
@@ -101,14 +120,21 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
         .lte("starts_at", end)
         .in("status", ["pending", "confirmed"]);
 
-      const busy = (data || []).map((a) => {
+      // Saat başına randevu sayısını say, kapasite doluysa "busy" olarak işaretle
+      const countByHour: Record<string, number> = {};
+      (data || []).forEach((a) => {
         const d = new Date(a.starts_at);
-        return `${String(d.getHours()).padStart(2, "0")}:00`;
+        const hour = `${String(d.getHours()).padStart(2, "0")}:00`;
+        countByHour[hour] = (countByHour[hour] || 0) + 1;
       });
+
+      const busy = Object.entries(countByHour)
+        .filter(([, count]) => count >= slotCapacity)
+        .map(([hour]) => hour);
       setBusySlots(busy);
     }
     loadBusy();
-  }, [date, selectedEmployee, fixedEmployeeId]);
+  }, [date, selectedEmployee, fixedEmployeeId, slotCapacity]);
 
   function nextStep() {
     if (step === "service" && selectedService) {
@@ -252,7 +278,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
           <WeekCalendar
             value={date}
             onChange={(d) => { setDate(d); setTime(""); }}
-            maxDate={endOfWeek}
+            maxDate={maxBookingDate}
             isBlocked={isBlockedDay}
           />
 

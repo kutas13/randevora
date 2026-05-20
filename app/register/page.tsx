@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 
 const benefits = [
   "30 saniyede kurulum",
-  "Kredi kartı gerekmez",
-  "Public booking sayfası",
-  "Super admin onayı sonrası aktif",
+  "Sınırsız randevu",
+  "Her personele özel link",
+  "Onay sonrası hemen aktif",
 ];
 
 const categories = [
@@ -31,7 +31,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         <div className="hidden lg:block">
           <Link href="/" className="flex items-center gap-3">
             <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
-            <strong>randevora</strong>
+            <strong>Randevora</strong>
           </Link>
           <h2 className="mt-8 text-3xl font-black">İşletmenizi dijitalleştirin</h2>
           <p className="mt-3 text-[var(--muted)]">Modern randevu sistemiyle müşterilerinize profesyonel bir deneyim sunun.</p>
@@ -82,7 +82,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
             <div>
               <label className="text-sm font-semibold">Slug (URL)</label>
               <div className="mt-1 flex h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--panel-strong)]">
-                <span className="pl-3 text-sm text-[var(--muted)]">randevora.com/</span>
+                <span className="pl-3 text-sm text-[var(--muted)]">Randevora.com/</span>
                 <input
                   name="slug"
                   className="h-full flex-1 bg-transparent px-1 outline-none"

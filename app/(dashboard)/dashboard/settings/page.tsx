@@ -18,6 +18,8 @@ export default function SettingsPage() {
   const [workDays, setWorkDays] = useState([true, true, true, true, true, true, false]);
   const [openTime, setOpenTime] = useState("09:00");
   const [closeTime, setCloseTime] = useState("20:00");
+  const [bookingWindow, setBookingWindow] = useState("weekly");
+  const [slotCapacity, setSlotCapacity] = useState(1);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,7 @@ export default function SettingsPage() {
   async function loadSettings() {
     const { data: biz } = await supabase
       .from("businesses")
-      .select("name, category, slug")
+      .select("name, category, slug, booking_window, slot_capacity")
       .eq("id", businessId)
       .single();
 
@@ -41,6 +43,8 @@ export default function SettingsPage() {
       setName(biz.name);
       setCategory(biz.category || "");
       setSlug(biz.slug);
+      setBookingWindow(biz.booking_window || "weekly");
+      setSlotCapacity(biz.slot_capacity || 1);
     }
 
     // Çalışma saatlerini yükle (ilk personel üzerinden veya genel)
@@ -78,7 +82,7 @@ export default function SettingsPage() {
     // İşletme bilgilerini güncelle
     const { error: bizErr } = await supabase
       .from("businesses")
-      .update({ name, category, slug })
+      .update({ name, category, slug, booking_window: bookingWindow, slot_capacity: slotCapacity })
       .eq("id", businessId);
 
     if (bizErr) {
@@ -157,7 +161,7 @@ export default function SettingsPage() {
               <div>
                 <label className="text-sm font-semibold">Slug (URL)</label>
                 <label className="mt-1 flex h-11 items-center gap-0 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)]">
-                  <span className="px-3 text-sm text-[var(--muted)]">randevora.com/book/</span>
+                  <span className="px-3 text-sm text-[var(--muted)]">Randevora.com/book/</span>
                   <input className="h-full flex-1 bg-transparent outline-none" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} />
                 </label>
               </div>
@@ -167,7 +171,30 @@ export default function SettingsPage() {
           {/* Çalışma Günleri ve Saatleri */}
           <section className="glass animate-fade-in stagger-2 rounded-xl p-5">
             <h2 className="flex items-center gap-2 text-lg font-bold"><Clock size={20} /> Çalışma günleri ve saatleri</h2>
-            <p className="mt-1 text-xs text-[var(--muted)]">Seçtiğiniz günler ve saatler tüm personeller için geçerli olur. Müşteriler sadece bu aralıkta randevu alabilir.</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">Seçtiğiniz günler ve saatler tüm personeller için geçerli olur.</p>
+
+            <div className="mt-4">
+              <label className="text-sm font-semibold">Randevu kabul süresi</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={bookingWindow} onChange={(e) => setBookingWindow(e.target.value)}>
+                <option value="weekly">Haftalık (bu hafta sonuna kadar)</option>
+                <option value="biweekly">2 Haftalık (2 hafta sonuna kadar)</option>
+                <option value="monthly">Aylık (ay sonuna kadar)</option>
+              </select>
+              <p className="mt-1 text-xs text-[var(--muted)]">Müşteriler bu süre aralığında randevu alabilir.</p>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-sm font-semibold">Saat başı müşteri kapasitesi</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+                value={slotCapacity}
+                onChange={(e) => setSlotCapacity(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+              <p className="mt-1 text-xs text-[var(--muted)]">Aynı saatte kaç müşteri kabul edebileceğinizi belirleyin. (Örn: 2 = aynı saatte 2 randevu alınabilir)</p>
+            </div>
             <div className="mt-4 grid grid-cols-7 gap-1.5">
               {weekdays.map((day, index) => (
                 <button

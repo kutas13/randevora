@@ -13,7 +13,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
 
   const { data: business } = await supabase
     .from("businesses")
-    .select("id, name, category")
+    .select("id, name, category, booking_window, slot_capacity")
     .eq("slug", slug)
     .eq("status", "approved")
     .single();
@@ -79,9 +79,8 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
   
   const { data: blockedDates } = await supabase
     .from("blocked_dates")
-    .select("employee_id, starts_at, ends_at")
-    .gte("ends_at", now.toISOString())
-    .lte("starts_at", endOfWeek.toISOString());
+    .select("employee_id, starts_at, ends_at, reason, recurring")
+    .eq("business_id", business.id);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[var(--panel)] to-[var(--background)] px-4 py-8">
@@ -99,6 +98,8 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
           fixedEmployeeId={null}
           workingHours={workingHours || []}
           blockedDates={blockedDates || []}
+          bookingWindow={business.booking_window || "weekly"}
+          slotCapacity={business.slot_capacity || 1}
         />
       </div>
     </main>

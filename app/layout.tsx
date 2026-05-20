@@ -4,7 +4,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "randevora | Online Randevu Sistemi",
+  title: "Randevora | Online Randevu Sistemi",
   description: "Berberlerden danışmanlara kadar her işletme için ultra hızlı online randevu sistemi. Randevunuz bizde.",
   keywords: ["randevu", "booking", "berber", "kuaför", "güzellik merkezi", "online randevu", "randevora"],
 };

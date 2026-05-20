@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarOff, Plus, Trash2 } from "lucide-react";
+import { CalendarOff, Repeat, Trash2 } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
-import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessId } from "@/lib/hooks/use-business";
 import { useToast } from "@/components/ui/toast";
@@ -17,15 +15,26 @@ type BlockedDate = {
   starts_at: string;
   ends_at: string;
   reason: string | null;
-  employee?: { full_name: string } | null;
+  recurring: boolean;
 };
+
+const DAY_NAMES_ORDERED = [
+  { label: "Pazartesi", value: 1 },
+  { label: "Salı", value: 2 },
+  { label: "Çarşamba", value: 3 },
+  { label: "Perşembe", value: 4 },
+  { label: "Cuma", value: 5 },
+  { label: "Cumartesi", value: 6 },
+  { label: "Pazar", value: 0 },
+];
+const DAY_NAMES: Record<number, string> = { 0: "Pazar", 1: "Pazartesi", 2: "Salı", 3: "Çarşamba", 4: "Perşembe", 5: "Cuma", 6: "Cumartesi" };
 
 export default function LeavesPage() {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ employee_id: "", start_date: "", end_date: "", reason: "" });
+  const [selectedDays, setSelectedDays] = useState<Record<string, string>>({});
+  const [recurring, setRecurring] = useState<Record<string, boolean>>({});
 
   const { businessId } = useBusinessId();
   const supabase = createClient();
@@ -39,7 +48,7 @@ export default function LeavesPage() {
     const [bdRes, empRes] = await Promise.all([
       supabase
         .from("blocked_dates")
-        .select("*, employee:employees(full_name)")
+        .select("*")
         .eq("business_id", businessId)
         .order("starts_at", { ascending: false }),
       supabase
@@ -54,18 +63,30 @@ export default function LeavesPage() {
     setLoading(false);
   }
 
-  async function handleAdd() {
-    if (!form.employee_id || !form.start_date || !form.end_date) {
-      toast("Personel ve tarih aralığı seçin.", "error");
+  async function handleAdd(employeeId: string) {
+    const dayStr = selectedDays[employeeId];
+    if (!dayStr && dayStr !== "0") {
+      toast("Gün seçin.", "error");
       return;
     }
+    const dayNum = parseInt(dayStr);
+    const isRecurring = recurring[employeeId] || false;
+
+    // Seçilen güne denk gelen en yakın tarihi bul
+    const refDate = new Date();
+    const currentDay = refDate.getDay();
+    let diff = dayNum - currentDay;
+    if (diff < 0) diff += 7;
+    refDate.setDate(refDate.getDate() + diff);
+    refDate.setHours(0, 0, 0, 0);
 
     const { error } = await supabase.from("blocked_dates").insert({
       business_id: businessId,
-      employee_id: form.employee_id,
-      starts_at: new Date(form.start_date).toISOString(),
-      ends_at: new Date(form.end_date + "T23:59:59").toISOString(),
-      reason: form.reason || null,
+      employee_id: employeeId,
+      starts_at: refDate.toISOString(),
+      ends_at: new Date(refDate.getTime() + 86399000).toISOString(),
+      reason: `recurring:${dayNum}`,
+      recurring: isRecurring,
     });
 
     if (error) {
@@ -74,90 +95,122 @@ export default function LeavesPage() {
     }
 
     toast("İzin eklendi!", "success");
-    setForm({ employee_id: "", start_date: "", end_date: "", reason: "" });
-    setShowModal(false);
+    setSelectedDays((p) => ({ ...p, [employeeId]: "" }));
+    setRecurring((p) => ({ ...p, [employeeId]: false }));
     load();
   }
 
   async function removeLeave(id: string) {
-    if (!confirm("Bu izni silmek istediğinize emin misiniz?")) return;
     const { error } = await supabase.from("blocked_dates").delete().eq("id", id);
-    if (error) { toast("Silinemedi: " + error.message, "error"); return; }
+    if (error) {
+      toast("Silinemedi: " + error.message, "error");
+      return;
+    }
     toast("İzin silindi.", "success");
     setBlockedDates(blockedDates.filter((b) => b.id !== id));
   }
 
-  if (loading) return <><Topbar title="İzin Yönetimi" subtitle="Yükleniyor..." /><main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main></>;
+  function getEmployeeLeaves(employeeId: string) {
+    return blockedDates.filter((bd) => bd.employee_id === employeeId);
+  }
+
+  if (loading)
+    return (
+      <>
+        <Topbar title="İzin Yönetimi" subtitle="Yükleniyor..." />
+        <main className="p-8 text-center text-[var(--muted)]">Yükleniyor...</main>
+      </>
+    );
 
   return (
     <>
       <Topbar title="İzin Yönetimi" subtitle="Personel ve admin izin günlerini belirleyin." />
       <main className="grid gap-5 p-4 md:p-8">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-[var(--muted)]">{blockedDates.length} izin kaydı</p>
-          <Button onClick={() => setShowModal(true)}><Plus size={18} /> İzin ekle</Button>
-        </div>
+        <p className="text-sm text-[var(--muted)]">
+          Her personel için izinli gününü seçin. &quot;Tekrar edilebilir&quot; seçilirse her hafta o gün kapalı olur.
+        </p>
 
-        {blockedDates.length === 0 ? (
-          <EmptyState icon={CalendarOff} title="Henüz izin tanımlanmamış" description="Personel ve adminlere izin günleri tanımlayın. İzinli günlerde randevu alınamaz.">
-            <Button onClick={() => setShowModal(true)}><Plus size={18} /> İlk izni ekle</Button>
-          </EmptyState>
-        ) : (
-          <section className="grid gap-3">
-            {blockedDates.map((bd) => {
-              const empName = Array.isArray(bd.employee) ? (bd.employee as any)[0]?.full_name : (bd.employee as any)?.full_name;
-              return (
-                <article key={bd.id} className="glass flex items-center justify-between rounded-xl p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-400/15">
-                      <CalendarOff size={18} />
-                    </div>
-                    <div>
-                      <strong className="block">{empName || "Personel"}</strong>
-                      <small className="text-[var(--muted)]">
-                        {new Date(bd.starts_at).toLocaleDateString("tr-TR")} - {new Date(bd.ends_at).toLocaleDateString("tr-TR")}
-                      </small>
-                      {bd.reason && <p className="text-xs text-[var(--muted)]">{bd.reason}</p>}
-                    </div>
-                  </div>
-                  <button onClick={() => removeLeave(bd.id)} className="flex size-8 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10">
-                    <Trash2 size={16} />
-                  </button>
-                </article>
-              );
-            })}
-          </section>
-        )}
-      </main>
-
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="İzin ekle">
         <div className="grid gap-4">
-          <div>
-            <label className="text-sm font-semibold">Personel</label>
-            <select className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.employee_id} onChange={(e) => setForm({ ...form, employee_id: e.target.value })}>
-              <option value="">Personel seçin</option>
-              {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-semibold">Başlangıç</label>
-              <input type="date" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+          {employees.map((emp) => {
+            const leaves = getEmployeeLeaves(emp.id);
+            return (
+              <article key={emp.id} className="glass rounded-xl p-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+                    <CalendarOff size={18} />
+                  </div>
+                  <strong className="text-base">{emp.full_name}</strong>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <select
+                    className="h-10 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm outline-none"
+                    value={selectedDays[emp.id] ?? ""}
+                    onChange={(e) => setSelectedDays((p) => ({ ...p, [emp.id]: e.target.value }))}
+                  >
+                    <option value="">Gün seçin</option>
+                    {DAY_NAMES_ORDERED.map((d) => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
+                    ))}
+                  </select>
+
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-sm transition hover:bg-[var(--panel-strong)]">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-[var(--accent)]"
+                      checked={recurring[emp.id] || false}
+                      onChange={(e) => setRecurring((p) => ({ ...p, [emp.id]: e.target.checked }))}
+                    />
+                    <Repeat size={14} />
+                    Tekrar edilebilir
+                  </label>
+
+                  <Button onClick={() => handleAdd(emp.id)} className="h-10 px-4 text-sm">
+                    Ekle
+                  </Button>
+                </div>
+
+                {leaves.length > 0 && (
+                  <div className="mt-3 grid gap-2">
+                    {leaves.map((lv) => {
+                      const dayNum = lv.reason ? parseInt(lv.reason.split(":")[1]) : new Date(lv.starts_at).getDay();
+                      const dayName = DAY_NAMES[dayNum] ?? "—";
+                      return (
+                        <div key={lv.id} className="flex items-center justify-between rounded-lg bg-red-50 px-3 py-2 dark:bg-red-400/10">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium text-red-700 dark:text-red-300">{dayName}</span>
+                            {lv.recurring ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-400/15 dark:text-orange-300">
+                                <Repeat size={11} /> Her hafta
+                              </span>
+                            ) : (
+                              <span className="text-xs text-[var(--muted)]">
+                                ({new Date(lv.starts_at).toLocaleDateString("tr-TR")})
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => removeLeave(lv.id)}
+                            className="flex size-7 items-center justify-center rounded text-[var(--muted)] transition hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-400/15"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+
+          {employees.length === 0 && (
+            <div className="rounded-xl border border-dashed border-[var(--line)] p-8 text-center text-[var(--muted)]">
+              Henüz aktif personel bulunmuyor.
             </div>
-            <div>
-              <label className="text-sm font-semibold">Bitiş</label>
-              <input type="date" className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-semibold">Sebep (opsiyonel)</label>
-            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Yıllık izin, hastalık vb." value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
-          </div>
-          <Button onClick={handleAdd} className="mt-2">
-            <Plus size={18} /> İzin ekle
-          </Button>
+          )}
         </div>
-      </Modal>
+      </main>
     </>
   );
 }

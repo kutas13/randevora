@@ -33,7 +33,7 @@ export default function HomePage() {
         <nav className="relative mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <img src="/logo.png" alt="Randevora" className="size-11 rounded-xl object-cover shadow-lg" />
-            <strong className="text-xl tracking-tight">randevora</strong>
+            <strong className="text-xl tracking-tight">Randevora</strong>
           </Link>
           <div className="flex items-center gap-2">
             <Link className="hidden rounded-lg px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] sm:block" href="/login">
@@ -148,7 +148,7 @@ export default function HomePage() {
       <section className="border-t border-[var(--line)] px-4 py-20">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <h2 className="text-3xl font-black md:text-5xl">Neden randevora?</h2>
+            <h2 className="text-3xl font-black md:text-5xl">Neden Randevora?</h2>
             <p className="mt-4 text-lg text-[var(--muted)]">İşletmenizi büyütecek her özellik tek yerde.</p>
           </div>
           <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -196,7 +196,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-sm text-[var(--muted)] md:flex-row">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="Randevora" className="size-7 rounded-md object-cover" />
-            <span>randevora &copy; 2026 · Randevunuz bizde</span>
+            <span>Randevora &copy; 2026 · Randevunuz bizde</span>
           </div>
           <div className="flex gap-4">
             <Link href="/login" className="hover:text-[var(--foreground)]">Giriş</Link>

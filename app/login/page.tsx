@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="glass animate-in w-full max-w-md rounded-xl p-7">
         <Link href="/" className="flex items-center gap-3">
           <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
-          <strong>randevora</strong>
+          <strong>Randevora</strong>
         </Link>
 
         <h1 className="mt-6 text-3xl font-black">Giriş yap</h1>
