@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, CalendarCheck, CheckCircle2, Clock, Globe, Laptop, Rocket, ShieldCheck, Smartphone, Sparkles, Star, Users, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, CreditCard, Gift, Globe, Laptop, Lock, RefreshCw, Rocket, ShieldCheck, Smartphone, Star, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const segments = ["Berber", "Kuaför", "Nail studio", "Güzellik merkezi", "Danışman", "Freelancer", "Özel ders", "Dövmeci", "Spa & Masaj"];
@@ -75,8 +75,8 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-7xl pt-24 text-center lg:pt-32">
           <div className="animate-fade-in">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-sm text-[var(--muted)] shadow-sm">
-              <Sparkles size={16} className="text-[var(--accent)]" />
-              Online randevu sistemi
+              <Gift size={16} className="text-[var(--accent)]" />
+              10 gün ücretsiz deneme · Kart bilgisi gerekmez
             </div>
 
             <h1 className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[1.1] tracking-tight md:text-7xl lg:text-8xl">
@@ -226,6 +226,67 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Güven / Şeffaflık */}
+      <section className="border-t border-[var(--line)] px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center">
+            <h2 className="text-3xl font-black md:text-4xl">Güvenli ödeme, şeffaf abonelik</h2>
+            <p className="mt-4 text-lg text-[var(--muted)]">
+              Hiçbir gizli ücret yok. Aboneliğinizi istediğiniz an tek tıkla iptal edebilirsiniz.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <article className="glass rounded-2xl p-5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+                <Gift size={20} />
+              </div>
+              <h3 className="mt-4 text-base font-bold">10 gün ücretsiz deneme</h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Kart bilgisi istemiyoruz. 10 gün boyunca tüm özellikleri ücretsiz dene.
+              </p>
+            </article>
+            <article className="glass rounded-2xl p-5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+                <RefreshCw size={20} />
+              </div>
+              <h3 className="mt-4 text-base font-bold">Tek tıkla iptal</h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Otomatik yenileme açıktır, ama panelden veya e-posta ile her an iptal edebilirsiniz.
+              </p>
+            </article>
+            <article className="glass rounded-2xl p-5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600">
+                <Lock size={20} />
+              </div>
+              <h3 className="mt-4 text-base font-bold">SSL & HTTPS</h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Tüm trafik TLS şifreleme ile korunur. Bağlantı uçtan uca güvenlidir.
+              </p>
+            </article>
+            <article className="glass rounded-2xl p-5">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                <CreditCard size={20} />
+              </div>
+              <h3 className="mt-4 text-base font-bold">Kart bilgisi sunucumuzda saklanmaz</h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Ödemeler PCI-DSS sertifikalı <strong>iyzico</strong> sanal POS üzerinden alınır.
+              </p>
+            </article>
+          </div>
+          <p className="mt-8 text-center text-sm text-[var(--muted)]">
+            Detaylar için{" "}
+            <Link href="/legal/mesafeli-satis" className="text-[var(--accent)] underline">
+              Mesafeli Satış Sözleşmesi
+            </Link>{" "}
+            ve{" "}
+            <Link href="/legal/iade-iptal" className="text-[var(--accent)] underline">
+              İade & İptal Koşulları
+            </Link>
+            &apos;na bakınız.
+          </p>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="border-t border-[var(--line)] px-4 py-20">
         <div className="mx-auto max-w-3xl text-center">
@@ -234,7 +295,7 @@ export default function HomePage() {
           </div>
           <h2 className="mt-6 text-3xl font-black md:text-5xl">Hemen başlayın</h2>
           <p className="mt-4 text-lg text-[var(--muted)]">
-            30 saniyede ücretsiz işletmenizi oluşturun. Kredi kartı gerekmez.
+            30 saniyede ücretsiz işletmenizi oluşturun. 10 gün ücretsiz deneme, kart gerekmez.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/register">
@@ -253,20 +314,60 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--line)] px-4 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-sm text-[var(--muted)] md:flex-row">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Randevora" className="size-7 rounded-md object-cover" />
-            <span>Randevora &copy; 2026 · Randevunuz bizde</span>
+      <footer className="border-t border-[var(--line)] bg-[var(--panel)] px-4 py-12">
+        <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-4">
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="Randevora" className="size-9 rounded-lg object-cover" />
+              <strong className="text-lg tracking-tight">Randevora</strong>
+            </div>
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              Randevunuz bizde. Berber, kuaför, güzellik ve danışmanlık için online randevu sistemi.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+                <Lock size={11} /> SSL
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+                <ShieldCheck size={11} /> KVKK
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+                <CreditCard size={11} /> iyzico
+              </span>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <Link href="/login" className="hover:text-[var(--foreground)]">Giriş</Link>
-            <Link href="/register" className="hover:text-[var(--foreground)]">Kayıt</Link>
-            <Link href="/dashboard" className="hover:text-[var(--foreground)]">Panel</Link>
+
+          <div>
+            <h4 className="text-sm font-bold">Ürün</h4>
+            <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
+              <li><Link href="/register" className="hover:text-[var(--foreground)]">Ücretsiz kayıt</Link></li>
+              <li><Link href="/login" className="hover:text-[var(--foreground)]">Giriş</Link></li>
+              <li><Link href="/dashboard" className="hover:text-[var(--foreground)]">Panel</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold">Şirket</h4>
+            <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
+              <li><Link href="/hakkimizda" className="hover:text-[var(--foreground)]">Hakkımızda</Link></li>
+              <li><Link href="/iletisim" className="hover:text-[var(--foreground)]">İletişim</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold">Yasal</h4>
+            <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
+              <li><Link href="/legal/mesafeli-satis" className="hover:text-[var(--foreground)]">Mesafeli Satış Sözleşmesi</Link></li>
+              <li><Link href="/legal/uyelik-sozlesmesi" className="hover:text-[var(--foreground)]">Üyelik Sözleşmesi</Link></li>
+              <li><Link href="/legal/gizlilik" className="hover:text-[var(--foreground)]">Gizlilik Politikası</Link></li>
+              <li><Link href="/legal/iade-iptal" className="hover:text-[var(--foreground)]">İade & İptal</Link></li>
+              <li><Link href="/legal/kvkk" className="hover:text-[var(--foreground)]">KVKK</Link></li>
+              <li><Link href="/legal/cerez-politikasi" className="hover:text-[var(--foreground)]">Çerez Politikası</Link></li>
+            </ul>
           </div>
         </div>
-        <div className="mx-auto mt-4 max-w-7xl border-t border-[var(--line)] pt-4 text-center text-xs text-[var(--muted)]">
-          Meridyen Yazılım Teknoloji Ticaret Ltd. Şti.
+        <div className="mx-auto mt-10 max-w-7xl border-t border-[var(--line)] pt-6 text-center text-xs text-[var(--muted)]">
+          © 2026 Meridyen Yazılım Teknoloji Ticaret Ltd. Şti. · Tüm hakları saklıdır.
         </div>
       </footer>
     </main>

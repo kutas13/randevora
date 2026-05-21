@@ -175,6 +175,7 @@ ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price_max_cents integer;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS duration_max_minutes integer;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price_variable boolean NOT NULL DEFAULT false;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS deposit_cents integer NOT NULL DEFAULT 0;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS latest_booking_time time;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS booking_window text DEFAULT 'weekly';
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_capacity integer DEFAULT 1;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_merge boolean DEFAULT true;

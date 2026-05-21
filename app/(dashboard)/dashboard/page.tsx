@@ -1,4 +1,4 @@
-import { CalendarClock, Coins, Users, Wallet } from "lucide-react";
+import { CalendarClock, CheckCircle2, Coins, Crown, Rocket, Users, Wallet } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { MetricCard } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,35 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatMoney, initials } from "@/lib/utils";
 import { getCurrentUser, canViewRevenue } from "@/lib/auth-helpers";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+const plans = [
+  {
+    name: "Başlangıç",
+    price: "999",
+    description: "Küçük ve orta ölçekli işletmeler için",
+    icon: Rocket,
+    features: [
+      "Sınırsız randevu",
+      "Admin dahil 5 çalışan",
+      "Online randevu sayfası",
+      "Takvim & izin yönetimi",
+    ],
+    popular: true,
+  },
+  {
+    name: "Profesyonel",
+    price: "1999",
+    description: "Büyük işletmeler ve çoklu şubeler için",
+    icon: Crown,
+    features: [
+      "Sınırsız randevu",
+      "Admin dahil 10 çalışan",
+      "WhatsApp entegrasyonu",
+      "Özel domain & öncelikli destek",
+    ],
+    popular: false,
+  },
+];
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -153,6 +182,54 @@ export default async function DashboardPage() {
               </article>
             )}
           </>
+        )}
+
+        {user?.role === "owner" && (
+          <section className="mt-2 grid gap-4">
+            <div>
+              <h2 className="text-lg font-bold">Ödeme planları</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">İşletmenize uygun planı seçin. Tüm planlarda sınırsız randevu hakkı.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {plans.map((plan) => {
+                const Icon = plan.icon;
+                return (
+                  <article
+                    key={plan.name}
+                    className={`relative rounded-2xl border p-5 transition-all duration-300 hover:shadow-lg ${plan.popular ? "border-[var(--accent)] bg-gradient-to-b from-[var(--accent)]/5 to-transparent" : "border-[var(--line)] bg-[var(--panel-strong)]"}`}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-3 left-5">
+                        <Badge variant="success">Önerilen</Badge>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <div className={`flex size-10 items-center justify-center rounded-xl ${plan.popular ? "bg-[var(--accent)]/10 text-[var(--accent)]" : "bg-neutral-100 text-neutral-600 dark:bg-white/10 dark:text-neutral-300"}`}>
+                        <Icon size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold">{plan.name}</h3>
+                        <p className="text-xs text-[var(--muted)]">{plan.description}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <span className="text-3xl font-black">{plan.price}</span>
+                      <span className="text-sm text-[var(--muted)]"> TL/ay</span>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {plan.features.map((feature) => (
+                        <p key={feature} className="flex items-center gap-2 text-sm">
+                          <CheckCircle2 size={15} className="shrink-0 text-[var(--accent)]" />
+                          {feature}
+                        </p>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <p className="text-xs text-[var(--muted)]">Ödeme bilgileri ve plan değişiklikleri için iletişime geçin.</p>
+          </section>
         )}
       </main>
     </>

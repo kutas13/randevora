@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit3, Palette, Plus, Power, Timer, Trash2 } from "lucide-react";
+import { Clock, Edit3, Palette, Plus, Power, Timer, Trash2 } from "lucide-react";
 import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -22,6 +22,7 @@ type Service = {
   price_max_cents: number | null;
   price_variable: boolean;
   deposit_cents: number;
+  latest_booking_time: string | null;
   color: string;
   active: boolean;
 };
@@ -34,6 +35,7 @@ type FormState = {
   price: string;
   priceMax: string;
   deposit: string;
+  latestTime: string;
   color: string;
   priceVariable: boolean;
 };
@@ -48,9 +50,16 @@ const emptyForm: FormState = {
   price: "700",
   priceMax: "",
   deposit: "0",
+  latestTime: "",
   color: "#0f766e",
   priceVariable: false,
 };
+
+function normalizeTime(t: string | null | undefined): string {
+  if (!t) return "";
+  // PostgreSQL time can come back as "HH:MM:SS" — only keep HH:MM for the input
+  return t.length >= 5 ? t.slice(0, 5) : t;
+}
 
 function formatDuration(min: number) {
   return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dk`;
@@ -139,6 +148,7 @@ export default function ServicesPage() {
       price_max_cents: priceMax,
       price_variable: form.priceVariable || priceMax !== null,
       deposit_cents: deposit,
+      latest_booking_time: form.latestTime || null,
       color: form.color,
       business_id: businessId,
     });
@@ -167,6 +177,7 @@ export default function ServicesPage() {
       price: String(service.price_cents),
       priceMax: service.price_max_cents ? String(service.price_max_cents) : "",
       deposit: String(service.deposit_cents || 0),
+      latestTime: normalizeTime(service.latest_booking_time),
       color: service.color,
       priceVariable: service.price_variable,
       active: service.active,
@@ -207,6 +218,7 @@ export default function ServicesPage() {
       price_max_cents: priceMax,
       price_variable: editForm.priceVariable || priceMax !== null,
       deposit_cents: deposit,
+      latest_booking_time: editForm.latestTime || null,
       color: editForm.color,
       active: editForm.active,
     }).eq("id", editingService.id);
@@ -277,11 +289,18 @@ export default function ServicesPage() {
                     )}
                   </div>
                 </div>
-                {service.deposit_cents > 0 && (
-                  <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-400/10 dark:text-teal-300">
-                    Kapora: {formatMoney(service.deposit_cents)}
-                  </p>
-                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {service.deposit_cents > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-400/10 dark:text-teal-300">
+                      Kapora: {formatMoney(service.deposit_cents)}
+                    </span>
+                  )}
+                  {service.latest_booking_time && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700 dark:bg-orange-400/10 dark:text-orange-300">
+                      <Clock size={12} /> En geç {normalizeTime(service.latest_booking_time)}
+                    </span>
+                  )}
+                </div>
               </article>
             ))}
           </section>
@@ -393,6 +412,21 @@ export default function ServicesPage() {
             />
             <p className="mt-2 text-xs text-[var(--muted)]">
               Müşteri randevu alırken iyzico üzerinden bu tutarı ödeyecek. 0 yazarsan kapora alınmaz.
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Clock size={15} /> En geç randevu saati
+            </h3>
+            <input
+              type="time"
+              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+              value={form.latestTime}
+              onChange={(e) => setForm({ ...form, latestTime: e.target.value })}
+            />
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Bu saatten sonra bu hizmet için randevu alınamaz. Boş bırakırsan kısıtlama olmaz.
             </p>
           </section>
 
@@ -526,6 +560,21 @@ export default function ServicesPage() {
             />
             <p className="mt-2 text-xs text-[var(--muted)]">
               Müşteri randevu alırken iyzico üzerinden bu tutarı ödeyecek.
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <Clock size={15} /> En geç randevu saati
+            </h3>
+            <input
+              type="time"
+              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+              value={editForm.latestTime}
+              onChange={(e) => setEditForm({ ...editForm, latestTime: e.target.value })}
+            />
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Bu saatten sonra bu hizmet için randevu alınamaz. Boş bırakırsan kısıtlama olmaz.
             </p>
           </section>
 

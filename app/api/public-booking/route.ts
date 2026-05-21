@@ -30,12 +30,27 @@ export async function POST(request: NextRequest) {
   const ids: string[] = Array.isArray(serviceIds) && serviceIds.length > 0 ? serviceIds : [serviceId];
   const { data: svcRows } = await admin
     .from("services")
-    .select("id, name, deposit_cents, price_cents")
+    .select("id, name, deposit_cents, price_cents, latest_booking_time")
     .in("id", ids)
     .eq("business_id", businessId);
 
   const services = svcRows || [];
   const depositTotal = services.reduce((sum, s) => sum + (s.deposit_cents || 0), 0);
+
+  // En gec randevu saati kontrolu
+  const startDate = new Date(startsAt);
+  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+  for (const s of services) {
+    if (!s.latest_booking_time) continue;
+    const parts = String(s.latest_booking_time).split(":");
+    const limit = (parseInt(parts[0] || "0") || 0) * 60 + (parseInt(parts[1] || "0") || 0);
+    if (startMinutes > limit) {
+      return NextResponse.json(
+        { error: `"${s.name}" hizmeti için en geç ${String(s.latest_booking_time).slice(0, 5)} saatine kadar randevu alabilirsiniz.` },
+        { status: 400 },
+      );
+    }
+  }
 
   // Musteri olustur/guncelle
   const { data: customer, error: custErr } = await admin

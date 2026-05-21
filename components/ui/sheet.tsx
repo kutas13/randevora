@@ -39,7 +39,7 @@ export function Sheet({ open, onClose, children, side = "left" }: SheetProps) {
       <div
         ref={ref}
         className={cn(
-          "fixed top-0 z-50 h-full w-full overflow-y-auto bg-[var(--background)] shadow-2xl transition-transform duration-300 ease-out sm:w-80",
+          "fixed inset-y-0 z-50 h-screen w-screen max-w-full overflow-y-auto bg-[var(--background)] shadow-2xl transition-transform duration-300 ease-out sm:w-80",
           side === "left" ? "left-0" : "right-0",
           open
             ? "translate-x-0"
@@ -47,6 +47,7 @@ export function Sheet({ open, onClose, children, side = "left" }: SheetProps) {
               ? "-translate-x-full"
               : "translate-x-full",
         )}
+        style={{ height: "100dvh" }}
       >
         <button
           onClick={onClose}

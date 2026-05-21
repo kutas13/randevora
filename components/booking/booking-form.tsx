@@ -14,6 +14,7 @@ type Service = {
   price_max_cents: number | null;
   price_variable: boolean;
   deposit_cents: number;
+  latest_booking_time: string | null;
   color: string;
 };
 
@@ -103,6 +104,18 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     });
   }
 
+  // Secilen hizmetlerin en gec randevu saatinin minimumu (en sikidan al)
+  function getServicesLatestLimit(): number | null {
+    let limit: number | null = null;
+    for (const s of selectedServices) {
+      if (!s.latest_booking_time) continue;
+      const parts = String(s.latest_booking_time).split(":");
+      const mins = (parseInt(parts[0] || "0") || 0) * 60 + (parseInt(parts[1] || "0") || 0);
+      limit = limit === null ? mins : Math.min(limit, mins);
+    }
+    return limit;
+  }
+
   // Çalışma saatlerine göre uygun saatleri al
   function getAvailableHours(dateStr: string): string[] {
     const empId = fixedEmployeeId || selectedEmployee;
@@ -112,17 +125,25 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     const weekday = d.getDay();
 
     const empHours = workingHours.filter((wh) => wh.employee_id === empId && wh.weekday === weekday);
-    if (empHours.length === 0) return defaultHours();
-
     const slots: string[] = [];
-    for (const wh of empHours) {
-      const startH = parseInt(wh.starts_at.split(":")[0]);
-      const endH = parseInt(wh.ends_at.split(":")[0]);
-      for (let h = startH; h < endH; h++) {
-        slots.push(`${String(h).padStart(2, "0")}:00`);
+    if (empHours.length === 0) {
+      slots.push(...defaultHours());
+    } else {
+      for (const wh of empHours) {
+        const startH = parseInt(wh.starts_at.split(":")[0]);
+        const endH = parseInt(wh.ends_at.split(":")[0]);
+        for (let h = startH; h < endH; h++) {
+          slots.push(`${String(h).padStart(2, "0")}:00`);
+        }
       }
     }
-    return slots.length > 0 ? slots : defaultHours();
+
+    const latestLimit = getServicesLatestLimit();
+    if (latestLimit === null) return slots;
+    return slots.filter((s) => {
+      const [h, m] = s.split(":").map((x) => parseInt(x));
+      return (h * 60 + m) <= latestLimit;
+    });
   }
 
   function defaultHours() {

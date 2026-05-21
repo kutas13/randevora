@@ -15,7 +15,6 @@ import {
   Scissors,
   Settings,
   Users,
-  WalletCards,
 } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { createClient } from "@/lib/supabase/client";
@@ -39,7 +38,6 @@ const items: NavItem[] = [
   { label: "İzin Yönetimi", href: "/dashboard/leaves", icon: CalendarOff, roles: ["owner", "admin"] },
   { label: "Randevu Linki", href: "/dashboard/booking-link", icon: Link2, roles: ["owner", "admin", "employee"] },
   { label: "Ayarlar", href: "/dashboard/settings", icon: Settings, roles: ["owner"] },
-  { label: "Ödeme Planı", href: "/dashboard/billing", icon: WalletCards, roles: ["owner"] },
 ];
 
 function NavItems({ active, role, onNavigate }: { active: string; role: UserRole; onNavigate?: () => void }) {
@@ -119,7 +117,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden min-h-screen w-72 shrink-0 border-r border-[var(--line)] bg-[var(--panel)] px-4 py-5 backdrop-blur lg:block">
+    <aside className="hidden min-h-screen w-72 shrink-0 border-r border-[var(--line)] bg-[var(--panel)] px-4 py-5 backdrop-blur md:block">
       <SidebarHeader businessName={businessName} />
       <div className="mt-8">
         <NavItems active={pathname} role={role} />
@@ -174,7 +172,7 @@ export function MobileMenuButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex size-10 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] lg:hidden"
+        className="flex size-10 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] md:hidden"
         aria-label="Menü"
       >
         <Menu size={20} />

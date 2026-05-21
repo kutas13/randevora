@@ -4,10 +4,11 @@ import { registerAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 
 const benefits = [
-  "30 saniyede kurulum",
+  "10 gün ücretsiz deneme",
+  "Kart bilgisi gerekmez",
   "Sınırsız randevu",
   "Her personele özel link",
-  "Onay sonrası hemen aktif",
+  "Tek tıkla iptal",
 ];
 
 const categories = [
@@ -125,8 +126,20 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
             <Button type="submit" className="h-11 w-full text-base">
               Başvuru gönder <ArrowRight size={18} />
             </Button>
-            <p className="text-center text-xs text-[var(--muted)]">
-              Başvurunuz super admin onayı sonrası aktif olacaktır.
+            <p className="text-center text-xs leading-5 text-[var(--muted)]">
+              Başvurunuz onay sonrası aktif olur. Kayıt olarak{" "}
+              <Link href="/legal/uyelik-sozlesmesi" className="underline hover:text-[var(--foreground)]">
+                Üyelik Sözleşmesi
+              </Link>
+              {", "}
+              <Link href="/legal/gizlilik" className="underline hover:text-[var(--foreground)]">
+                Gizlilik Politikası
+              </Link>{" "}
+              ve{" "}
+              <Link href="/legal/kvkk" className="underline hover:text-[var(--foreground)]">
+                KVKK Aydınlatma Metni
+              </Link>
+              &apos;ni okuyup kabul etmiş sayılırsınız.
             </p>
           </form>
 
