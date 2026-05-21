@@ -12,12 +12,41 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
--- 2) ENUMS (idempotent)
+-- 2) ENUMS (idempotent + eksik degerleri ekle)
 DO $$ BEGIN CREATE TYPE public.user_role AS ENUM ('super_admin','owner','admin','employee'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.business_status AS ENUM ('pending','approved','rejected','suspended'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.plan_code AS ENUM ('free','starter','pro','enterprise'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.appointment_status AS ENUM ('pending','confirmed','cancelled','completed','no_show'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE TYPE public.notification_kind AS ENUM ('appointment_created','appointment_confirmed','appointment_cancelled','reminder_24h','reminder_1h','review_request'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Eksik enum degerlerini ekle (eski semadan kalmis olabilir)
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'super_admin';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'owner';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'admin';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'employee';
+
+ALTER TYPE public.business_status ADD VALUE IF NOT EXISTS 'pending';
+ALTER TYPE public.business_status ADD VALUE IF NOT EXISTS 'approved';
+ALTER TYPE public.business_status ADD VALUE IF NOT EXISTS 'rejected';
+ALTER TYPE public.business_status ADD VALUE IF NOT EXISTS 'suspended';
+
+ALTER TYPE public.plan_code ADD VALUE IF NOT EXISTS 'free';
+ALTER TYPE public.plan_code ADD VALUE IF NOT EXISTS 'starter';
+ALTER TYPE public.plan_code ADD VALUE IF NOT EXISTS 'pro';
+ALTER TYPE public.plan_code ADD VALUE IF NOT EXISTS 'enterprise';
+
+ALTER TYPE public.appointment_status ADD VALUE IF NOT EXISTS 'pending';
+ALTER TYPE public.appointment_status ADD VALUE IF NOT EXISTS 'confirmed';
+ALTER TYPE public.appointment_status ADD VALUE IF NOT EXISTS 'cancelled';
+ALTER TYPE public.appointment_status ADD VALUE IF NOT EXISTS 'completed';
+ALTER TYPE public.appointment_status ADD VALUE IF NOT EXISTS 'no_show';
+
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'appointment_created';
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'appointment_confirmed';
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'appointment_cancelled';
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'reminder_24h';
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'reminder_1h';
+ALTER TYPE public.notification_kind ADD VALUE IF NOT EXISTS 'review_request';
 
 -- 3) TABLOLAR (idempotent)
 CREATE TABLE IF NOT EXISTS public.businesses (
