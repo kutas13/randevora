@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, CheckCircle2, Clock, CreditCard, Gift, Globe, Laptop, Lock, RefreshCw, Rocket, ShieldCheck, Smartphone, Star, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, CreditCard, Gift, Globe, Laptop, Lock, Mail, Phone, RefreshCw, Rocket, ShieldCheck, Smartphone, Star, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const segments = ["Berber", "Kuaför", "Nail studio", "Güzellik merkezi", "Danışman", "Freelancer", "Özel ders", "Dövmeci", "Spa & Masaj"];
@@ -280,7 +280,7 @@ export default function HomePage() {
             </Link>{" "}
             ve{" "}
             <Link href="/legal/iade-iptal" className="text-[var(--accent)] underline">
-              İade & İptal Koşulları
+              Teslimat ve İade Koşulları
             </Link>
             &apos;na bakınız.
           </p>
@@ -324,6 +324,14 @@ export default function HomePage() {
             <p className="mt-3 text-sm text-[var(--muted)]">
               Randevunuz bizde. Berber, kuaför, güzellik ve danışmanlık için online randevu sistemi.
             </p>
+            <div className="mt-4 grid gap-2 text-sm">
+              <a href="tel:+905456036547" className="inline-flex items-center gap-2 text-[var(--foreground)] hover:text-[var(--accent)]">
+                <Phone size={14} className="text-[var(--accent)]" /> 0545 603 65 47
+              </a>
+              <a href="mailto:iletisim@randevora.com.tr" className="inline-flex items-center gap-2 text-[var(--foreground)] hover:text-[var(--accent)]">
+                <Mail size={14} className="text-[var(--accent)]" /> iletisim@randevora.com.tr
+              </a>
+            </div>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
                 <Lock size={11} /> SSL
@@ -332,7 +340,7 @@ export default function HomePage() {
                 <ShieldCheck size={11} /> KVKK
               </span>
               <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
-                <CreditCard size={11} /> iyzico
+                3D Secure
               </span>
             </div>
           </div>
@@ -360,16 +368,61 @@ export default function HomePage() {
               <li><Link href="/legal/mesafeli-satis" className="hover:text-[var(--foreground)]">Mesafeli Satış Sözleşmesi</Link></li>
               <li><Link href="/legal/uyelik-sozlesmesi" className="hover:text-[var(--foreground)]">Üyelik Sözleşmesi</Link></li>
               <li><Link href="/legal/gizlilik" className="hover:text-[var(--foreground)]">Gizlilik Politikası</Link></li>
-              <li><Link href="/legal/iade-iptal" className="hover:text-[var(--foreground)]">İade & İptal</Link></li>
-              <li><Link href="/legal/kvkk" className="hover:text-[var(--foreground)]">KVKK</Link></li>
+              <li><Link href="/legal/iade-iptal" className="hover:text-[var(--foreground)]">Teslimat ve İade</Link></li>
+              <li><Link href="/legal/kvkk" className="hover:text-[var(--foreground)]">KVKK Aydınlatma Metni</Link></li>
               <li><Link href="/legal/cerez-politikasi" className="hover:text-[var(--foreground)]">Çerez Politikası</Link></li>
             </ul>
           </div>
         </div>
-        <div className="mx-auto mt-10 max-w-7xl border-t border-[var(--line)] pt-6 text-center text-xs text-[var(--muted)]">
+
+        {/* Odeme rozetleri */}
+        <div className="mx-auto mt-10 max-w-7xl border-t border-[var(--line)] pt-6">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Güvenli ödeme altyapısı
+            </p>
+            <PaymentBadges />
+          </div>
+        </div>
+
+        <div className="mx-auto mt-6 max-w-7xl text-center text-xs text-[var(--muted)]">
           © 2026 Meridyen Yazılım Teknoloji Ticaret Ltd. Şti. · Tüm hakları saklıdır.
         </div>
       </footer>
     </main>
+  );
+}
+
+function PaymentBadges() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2.5">
+      {/* iyzico ile Öde */}
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-white px-3 py-2 shadow-sm">
+        <span className="text-[13px] font-bold tracking-tight text-[#1E64FF]">iyzico</span>
+        <span className="text-[10px] font-semibold text-neutral-500">ile öde</span>
+      </span>
+
+      {/* VISA */}
+      <span className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--line)] bg-white px-3 shadow-sm">
+        <span className="font-black italic tracking-tight text-[#1A1F71]" style={{ fontSize: 15 }}>VISA</span>
+      </span>
+
+      {/* Mastercard */}
+      <span className="inline-flex h-9 items-center gap-0 rounded-lg border border-[var(--line)] bg-white px-2.5 shadow-sm">
+        <span className="block size-5 rounded-full bg-[#EB001B]" />
+        <span className="-ml-2 block size-5 rounded-full bg-[#F79E1B] mix-blend-multiply" />
+        <span className="ml-1 text-[10px] font-bold uppercase text-neutral-700">Mastercard</span>
+      </span>
+
+      {/* Troy (yerel kartlar) */}
+      <span className="inline-flex h-9 items-center rounded-lg border border-[var(--line)] bg-white px-3 shadow-sm">
+        <span className="font-black tracking-tight text-[#00B7AB]" style={{ fontSize: 13 }}>TROY</span>
+      </span>
+
+      <span className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--line)] bg-white px-3 shadow-sm">
+        <Lock size={12} className="text-emerald-600" />
+        <span className="text-[10px] font-bold uppercase text-neutral-700">SSL</span>
+      </span>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { queueAppointmentNotifications } from "@/lib/notifications/queue";
 
 export async function POST(request: NextRequest) {
   const admin = createClient(
@@ -93,6 +94,45 @@ export async function POST(request: NextRequest) {
 
   if (aptErr || !appointment) {
     return NextResponse.json({ error: "Randevu oluşturulamadı: " + (aptErr?.message || "") }, { status: 500 });
+  }
+
+  // Bildirimleri kuyruga ekle (kapora gerekmeyen direkt onayli randevularda)
+  // Kapora gerekiyorsa, /api/payment/callback basariyla geri donerse o zaman gonderilir.
+  if (depositTotal === 0) {
+    try {
+      const { data: biz } = await admin
+        .from("businesses")
+        .select("name")
+        .eq("id", businessId)
+        .single();
+
+      const { data: emps } = await admin
+        .from("employees")
+        .select("id, phone")
+        .eq("business_id", businessId)
+        .eq("active", true);
+
+      const start = new Date(startsAt);
+      const date = start.toLocaleDateString("tr-TR");
+      const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+      const serviceNames = services.map((s) => s.name).join(", ");
+
+      await queueAppointmentNotifications({
+        admin,
+        businessId,
+        appointmentId: appointment.id,
+        customerName: name,
+        customerPhone: phone,
+        date,
+        time,
+        services: serviceNames,
+        businessName: biz?.name || "İşletme",
+        startsAt,
+        employeePhones: (emps || []).map((e) => e.phone).filter((p): p is string => !!p),
+      });
+    } catch (err) {
+      console.error("[public-booking] notification queue failed:", err);
+    }
   }
 
   return NextResponse.json({

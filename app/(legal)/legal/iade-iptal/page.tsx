@@ -2,26 +2,37 @@ import type { Metadata } from "next";
 import { LegalList, LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "İade ve İptal Koşulları · Randevora",
-  description: "Randevora abonelik iade, iptal ve otomatik yenileme koşulları.",
+  title: "Teslimat ve İade Koşulları · Randevora",
+  description:
+    "Randevora dijital hizmet teslimatı, abonelik iadesi, iptal ve otomatik yenileme koşulları.",
 };
 
 export default function Page() {
   return (
-    <LegalPage title="İade ve İptal Koşulları" updatedAt="01.05.2026">
+    <LegalPage title="Teslimat ve İade Koşulları" updatedAt="01.05.2026">
       <LegalSection title="Özet">
         <LegalList
           items={[
+            "Randevora bir SaaS yazılım hizmetidir; fiziksel ürün teslimatı yapılmaz, hizmet ödeme sonrası anında dijital olarak kullanıma açılır.",
             "Tüm yeni hesaplarda 10 gün ücretsiz deneme süresi vardır.",
             "Deneme süresince kart bilgisi alınmaz, ücretlendirme yapılmaz.",
             "Abonelik başlatıldıktan sonra aylık dönemler için otomatik yenileme aktiftir.",
-            "Yenilemeyi panel üzerinden veya iletisim@randevora.com.tr adresine yazarak iptal edebilirsiniz.",
+            "Yenilemeyi panel üzerinden veya iletisim@randevora.com.tr / 0545 603 65 47 üzerinden iptal edebilirsiniz.",
             "Hizmet kullanılmadıysa 14 gün içinde tam iade yapılır.",
           ]}
         />
       </LegalSection>
 
-      <LegalSection title="1. Deneme Süresi">
+      <LegalSection title="1. Hizmet Teslimatı">
+        <p>
+          Randevora dijital bir hizmettir; fiziksel ürün gönderimi yapılmaz. Ödeme
+          onaylandıktan hemen sonra kullanıcı hesabınız üzerinden tüm özellikler
+          aktif olur ve <strong>randevora.com.tr</strong> adresinden erişebilirsiniz.
+          Hizmet, internet bağlantınız olduğu sürece 7/24 kullanılabilir.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="2. Deneme Süresi">
         <p>
           Randevora&apos;ya yeni kayıt olan tüm üyelere{" "}
           <strong>10 (on) gün ücretsiz deneme</strong> süresi tanınır. Bu süre boyunca
@@ -30,7 +41,7 @@ export default function Page() {
         </p>
       </LegalSection>
 
-      <LegalSection title="2. Aboneliğin İptali">
+      <LegalSection title="3. Aboneliğin İptali">
         <LegalList
           items={[
             "Dashboard > Ayarlar > Abonelik bölümünden &apos;Aboneliği iptal et&apos; düğmesi ile aktif aboneliğinizi tek tıkla sonlandırabilirsiniz.",
@@ -41,7 +52,7 @@ export default function Page() {
         />
       </LegalSection>
 
-      <LegalSection title="3. İade Koşulları">
+      <LegalSection title="4. İade Koşulları">
         <LegalList
           items={[
             "Ücret tahsil edilmiş ve hizmet HİÇ kullanılmamışsa: 14 gün içinde tam iade.",
@@ -52,7 +63,7 @@ export default function Page() {
         />
       </LegalSection>
 
-      <LegalSection title="4. Otomatik Yenileme">
+      <LegalSection title="5. Otomatik Yenileme">
         <p>
           Abonelik aylık olarak otomatik yenilenir. Yenileme tarihinden{" "}
           <strong>3 gün önce</strong> e-posta ile bilgilendirilirsiniz. İstemediğiniz
@@ -60,11 +71,11 @@ export default function Page() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. İletişim">
+      <LegalSection title="6. İletişim">
         <p>
           İptal/iade taleplerinizi <strong>iletisim@randevora.com.tr</strong>{" "}
-          adresine gönderebilirsiniz. Talepleriniz en geç 2 iş günü içinde
-          yanıtlanır.
+          adresine veya <strong>0545 603 65 47</strong> numaramıza iletebilirsiniz.
+          Talepleriniz en geç 2 iş günü içinde yanıtlanır.
         </p>
       </LegalSection>
     </LegalPage>

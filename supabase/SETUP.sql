@@ -78,10 +78,13 @@ CREATE TABLE IF NOT EXISTS public.employees (
   user_id uuid REFERENCES public.users(id) ON DELETE SET NULL,
   full_name text NOT NULL,
   title text,
+  phone text,
   role public.user_role NOT NULL DEFAULT 'employee',
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- Eski DB'lerde phone yoksa ekle
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS phone text;
 
 CREATE TABLE IF NOT EXISTS public.services (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -176,6 +179,46 @@ ALTER TABLE public.services ADD COLUMN IF NOT EXISTS duration_max_minutes intege
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price_variable boolean NOT NULL DEFAULT false;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS deposit_cents integer NOT NULL DEFAULT 0;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS latest_booking_time time;
+
+-- WHATSAPP & MESAJ KUYRUGU
+CREATE TABLE IF NOT EXISTS public.business_whatsapp (
+  business_id uuid PRIMARY KEY REFERENCES public.businesses(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'disconnected',
+  phone_number text,
+  session_id text,
+  connected_at timestamptz,
+  last_seen_at timestamptz,
+  qr_token text,
+  qr_expires_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.business_message_templates (
+  business_id uuid PRIMARY KEY REFERENCES public.businesses(id) ON DELETE CASCADE,
+  customer_confirmation text NOT NULL DEFAULT 'Merhaba {customer_name}, randevunuz oluşturuldu. ✅\nTarih: {date} {time}\nHizmet: {services}\n{business_name}',
+  customer_reminder_24h text NOT NULL DEFAULT 'Merhaba {customer_name}, yarın {time} saatinde randevunuz var. {business_name} olarak sizi bekliyoruz! 🙌',
+  customer_reminder_3h text NOT NULL DEFAULT 'Merhaba {customer_name}, bugün {time} saatindeki randevunuza birkaç saat kaldı. Görüşmek üzere! 👋',
+  employee_new_booking text NOT NULL DEFAULT 'Yeni randevu! 📅\n{customer_name} ({customer_phone})\nTarih: {date} {time}\nHizmet: {services}',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.message_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id uuid REFERENCES public.businesses(id) ON DELETE CASCADE,
+  appointment_id uuid REFERENCES public.appointments(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  channel text NOT NULL DEFAULT 'whatsapp',
+  recipient text NOT NULL,
+  message text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  attempts integer NOT NULL DEFAULT 0,
+  last_error text,
+  scheduled_at timestamptz NOT NULL DEFAULT now(),
+  sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS message_queue_status_scheduled_idx ON public.message_queue (status, scheduled_at);
+CREATE INDEX IF NOT EXISTS message_queue_business_idx ON public.message_queue (business_id);
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS booking_window text DEFAULT 'weekly';
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_capacity integer DEFAULT 1;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_merge boolean DEFAULT true;

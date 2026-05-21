@@ -43,10 +43,10 @@ export default function Page() {
             Hafta içi 09:00 – 18:00
           </p>
           <a
-            href="tel:+908502222222"
+            href="tel:+905456036547"
             className="mt-2 inline-block text-sm font-semibold text-[var(--accent)] hover:underline"
           >
-            +90 850 222 22 22
+            0545 603 65 47
           </a>
         </div>
 

@@ -61,6 +61,17 @@ function normalizeTime(t: string | null | undefined): string {
   return t.length >= 5 ? t.slice(0, 5) : t;
 }
 
+// 30 dakikalik slotlar: 07:00, 07:30, 08:00, ..., 23:30
+const TIME_SLOTS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 7; h <= 23; h++) {
+    for (const m of [0, 30]) {
+      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return out;
+})();
+
 function formatDuration(min: number) {
   return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dk`;
 }
@@ -419,15 +430,28 @@ export default function ServicesPage() {
             <h3 className="flex items-center gap-2 text-sm font-semibold">
               <Clock size={15} /> En geç randevu saati
             </h3>
-            <input
-              type="time"
-              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
-              value={form.latestTime}
-              onChange={(e) => setForm({ ...form, latestTime: e.target.value })}
-            />
-            <p className="mt-2 text-xs text-[var(--muted)]">
-              Bu saatten sonra bu hizmet için randevu alınamaz. Boş bırakırsan kısıtlama olmaz.
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Bu hizmet için randevu kabul edilen son saat. Seçim yapma → kısıtlama olmaz.
             </p>
+            <div className="mt-3 grid max-h-56 grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, latestTime: "" })}
+                className={`rounded-md border px-2 py-1.5 text-xs font-semibold transition ${form.latestTime === "" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--accent)]/40"}`}
+              >
+                Kısıt yok
+              </button>
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setForm({ ...form, latestTime: slot })}
+                  className={`rounded-md border px-2 py-1.5 text-xs font-semibold transition ${form.latestTime === slot ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-[var(--background)] hover:border-[var(--accent)]/40"}`}
+                >
+                  {slot}
+                </button>
+              ))}
+            </div>
           </section>
 
           <div>
@@ -567,15 +591,28 @@ export default function ServicesPage() {
             <h3 className="flex items-center gap-2 text-sm font-semibold">
               <Clock size={15} /> En geç randevu saati
             </h3>
-            <input
-              type="time"
-              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
-              value={editForm.latestTime}
-              onChange={(e) => setEditForm({ ...editForm, latestTime: e.target.value })}
-            />
-            <p className="mt-2 text-xs text-[var(--muted)]">
-              Bu saatten sonra bu hizmet için randevu alınamaz. Boş bırakırsan kısıtlama olmaz.
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Bu hizmet için randevu kabul edilen son saat. Seçim yapma → kısıtlama olmaz.
             </p>
+            <div className="mt-3 grid max-h-56 grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
+              <button
+                type="button"
+                onClick={() => setEditForm({ ...editForm, latestTime: "" })}
+                className={`rounded-md border px-2 py-1.5 text-xs font-semibold transition ${editForm.latestTime === "" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--accent)]/40"}`}
+              >
+                Kısıt yok
+              </button>
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, latestTime: slot })}
+                  className={`rounded-md border px-2 py-1.5 text-xs font-semibold transition ${editForm.latestTime === slot ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--line)] bg-[var(--background)] hover:border-[var(--accent)]/40"}`}
+                >
+                  {slot}
+                </button>
+              ))}
+            </div>
           </section>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">

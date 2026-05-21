@@ -30,7 +30,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <span>·</span>
           <Link href="/legal/gizlilik" className="hover:text-[var(--foreground)]">Gizlilik Politikası</Link>
           <span>·</span>
-          <Link href="/legal/iade-iptal" className="hover:text-[var(--foreground)]">İade & İptal</Link>
+          <Link href="/legal/iade-iptal" className="hover:text-[var(--foreground)]">Teslimat ve İade</Link>
           <span>·</span>
           <Link href="/legal/kvkk" className="hover:text-[var(--foreground)]">KVKK</Link>
           <span>·</span>

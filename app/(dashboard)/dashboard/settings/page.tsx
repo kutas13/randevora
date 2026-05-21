@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useBusinessId } from "@/lib/hooks/use-business";
 import { useToast } from "@/components/ui/toast";
+import { WhatsAppSettings } from "@/components/dashboard/whatsapp-settings";
 
 const weekdays = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 const weekdayNumbers = [1, 2, 3, 4, 5, 6, 0]; // JS: 0=Pazar, 1=Pzt...
@@ -232,6 +233,8 @@ export default function SettingsPage() {
             </div>
           </section>
         </div>
+
+        <WhatsAppSettings />
 
         <Button onClick={handleSave} disabled={saving} className="w-full md:w-auto md:justify-self-end">
           <Save size={18} /> {saving ? "Kaydediliyor..." : "Kaydet"}
