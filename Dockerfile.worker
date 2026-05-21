@@ -9,8 +9,6 @@ RUN npm install --omit=dev --no-package-lock
 
 COPY whatsapp-worker/server.js ./
 
-VOLUME ["/app/auth"]
-
 ENV PORT=3001
 EXPOSE 3001
 
