@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env*
+*.log
+out
+build
+dist
+coverage
+.vercel
+.deploy-push.sh
+whatsapp-worker/node_modules
+whatsapp-worker/auth
+whatsapp-worker/.env
