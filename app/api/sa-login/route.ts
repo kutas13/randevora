@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
+import { signSaBypass } from "@/lib/sa-bypass";
 
 export const runtime = "nodejs";
-
-function sign(payload: string, secret: string) {
-  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
-}
 
 export async function POST(req: NextRequest) {
   const key = process.env.SUPER_ADMIN_KEY;
   if (!key || key.length < 8) {
-    return NextResponse.json({ error: "Sunucuda SUPER_ADMIN_KEY tanimli degil." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Sunucuda SUPER_ADMIN_KEY tanimli degil veya cok kisa (min 8 karakter)." },
+      { status: 500 },
+    );
   }
 
   let body: { password?: string } = {};
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const issued = Date.now().toString();
   const payload = `super-admin:${issued}`;
-  const sig = sign(payload, key);
+  const sig = await signSaBypass(payload, key);
   const cookieValue = `${payload}:${sig}`;
 
   const res = NextResponse.json({ ok: true });
