@@ -296,9 +296,47 @@ app.post('/sessions/:businessId/logout', requireAuth, async (req, res) => {
   }
 });
 
+// ---------- Internal scheduler ----------
+// Vercel cron Hobby'de gunde 1 kez calisir. Bizim isimiz daha hassas:
+// randevu saatlerine gore (24h/2h once) hatirlatma gondermek.
+// Worker zaten 24/7 ayakta oldugu icin DB'yi kendisi periyodik tarayip
+// "scheduled_at <= now" olan kayitlari Randevora'nin cron endpoint'ine
+// vurarak gondertir.
+const RANDEVORA_URL = (process.env.RANDEVORA_URL || '').replace(/\/+$/, '');
+const CRON_SECRET = process.env.CRON_SECRET || '';
+const SCHEDULER_INTERVAL_MS = Number(process.env.SCHEDULER_INTERVAL_MS || 60_000);
+
+async function pollDueNotifications() {
+  if (!RANDEVORA_URL) return;
+  try {
+    const res = await fetch(`${RANDEVORA_URL}/api/cron/process-notifications`, {
+      method: 'GET',
+      headers: CRON_SECRET ? { Authorization: `Bearer ${CRON_SECRET}` } : {},
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && (data.processed || 0) > 0) {
+        logger.info({ ...data }, 'Bildirim islendi');
+      }
+    } else {
+      logger.warn({ status: res.status }, 'cron endpoint yanit hatasi');
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, 'cron poll hatasi');
+  }
+}
+
 // ---------- Run ----------
 app.listen(PORT, () => {
-  logger.info({ port: PORT }, 'WhatsApp worker dinleniyor');
+  logger.info({ port: PORT, interval_ms: SCHEDULER_INTERVAL_MS }, 'WhatsApp worker dinleniyor');
+  if (RANDEVORA_URL) {
+    logger.info({ url: RANDEVORA_URL }, 'Internal scheduler aktif');
+    setInterval(pollDueNotifications, SCHEDULER_INTERVAL_MS);
+    // Acilista da hemen bir kez tara
+    setTimeout(pollDueNotifications, 5_000);
+  } else {
+    logger.warn('RANDEVORA_URL tanimsiz; internal scheduler kapali');
+  }
 });
 
 // Graceful shutdown
