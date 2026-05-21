@@ -1,24 +1,22 @@
 /**
  * Bildirim gondericisi.
  *
- * Mevcut sistem 3 olasi WhatsApp/SMS gateway turunu destekler. ENV ile yapilandirilir:
+ * Oncelik sirasi:
  *
- * 1) Webhook (kendi worker'iniz - whatsapp-web.js, baileys vb.):
- *    NOTIFY_WEBHOOK_URL=https://your-worker.com/send
- *    NOTIFY_WEBHOOK_SECRET=...
- *    POST body: { recipient, message, channel, businessId }
+ * 1) WHATSAPP_WORKER_URL  -> Baileys worker (multi-tenant, isletme basina)
+ *    NOTIFY_WEBHOOK_SECRET ile auth.
+ *    POST {WORKER}/sessions/<businessId>/send {recipient, message}
  *
- * 2) Twilio (WhatsApp Business / SMS):
- *    TWILIO_ACCOUNT_SID=...
- *    TWILIO_AUTH_TOKEN=...
- *    TWILIO_FROM=whatsapp:+14155238886
+ * 2) NOTIFY_WEBHOOK_URL   -> Tek-kiraciı eski webhook (geriye uyumluluk)
+ *    POST {URL} {recipient, message, channel, businessId}
  *
- * 3) Meta Cloud API:
- *    META_WA_TOKEN=...
- *    META_WA_PHONE_ID=...
+ * 3) TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + TWILIO_FROM
+ * 4) META_WA_TOKEN + META_WA_PHONE_ID
  *
- * Hicbiri yapilandirilmamissa konsola log dusulur (gelistirme modu).
+ * Hicbiri yapilandirilmamissa konsola log dusulur.
  */
+
+import { isWorkerConfigured, workerSend } from "@/lib/whatsapp/worker-client";
 
 type SendResult = { ok: boolean; error?: string; provider?: string };
 
@@ -32,7 +30,14 @@ type SendArgs = {
 export async function sendNotification(args: SendArgs): Promise<SendResult> {
   const { recipient, message, channel = "whatsapp", businessId } = args;
 
-  // 1) Webhook
+  // 1) Multi-tenant worker (her isletme kendi WhatsApp'i)
+  if (isWorkerConfigured() && businessId && channel === "whatsapp") {
+    const r = await workerSend(businessId, recipient, message);
+    if (r.ok) return { ok: true, provider: "worker" };
+    return { ok: false, error: r.error || "worker error", provider: "worker" };
+  }
+
+  // 2) Eski webhook
   if (process.env.NOTIFY_WEBHOOK_URL) {
     try {
       const res = await fetch(process.env.NOTIFY_WEBHOOK_URL, {
@@ -54,7 +59,7 @@ export async function sendNotification(args: SendArgs): Promise<SendResult> {
     }
   }
 
-  // 2) Twilio
+  // 3) Twilio
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) {
     try {
       const sid = process.env.TWILIO_ACCOUNT_SID;
@@ -81,7 +86,7 @@ export async function sendNotification(args: SendArgs): Promise<SendResult> {
     }
   }
 
-  // 3) Meta Cloud API (sadece WhatsApp icin)
+  // 4) Meta Cloud API
   if (channel === "whatsapp" && process.env.META_WA_TOKEN && process.env.META_WA_PHONE_ID) {
     try {
       const res = await fetch(
@@ -110,14 +115,15 @@ export async function sendNotification(args: SendArgs): Promise<SendResult> {
     }
   }
 
-  // 4) Geliştirme modu: konsola yaz, basarilı say
-  console.log("[notifications:dev]", { recipient, channel, message: message.slice(0, 80) + "…" });
+  // 5) Dev mode
+  console.log("[notifications:dev]", { recipient, channel, businessId, message: message.slice(0, 80) + "…" });
   return { ok: true, provider: "console" };
 }
 
 export function isAnyProviderConfigured(): boolean {
   return Boolean(
-    process.env.NOTIFY_WEBHOOK_URL ||
+    isWorkerConfigured() ||
+      process.env.NOTIFY_WEBHOOK_URL ||
       (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM) ||
       (process.env.META_WA_TOKEN && process.env.META_WA_PHONE_ID),
   );

@@ -1,93 +1,60 @@
-# Randevora WhatsApp Worker
+# Randevora WhatsApp Worker (Multi-tenant)
 
-Bağımsız küçük bir Node.js servisi. **Baileys** (WhatsApp Web) ile WhatsApp'a bağlanır ve Randevora'nın gönderdiği bildirimleri müşterinize/çalışanınıza WhatsApp mesajı olarak iletir.
+Her işletmenin **kendi WhatsApp hesabını** Randevora paneli üzerinden bağladığı küçük bir Node.js servisi. Baileys (WhatsApp Web protokolü) ile çalışır.
 
-> **Önemli:** Bu servis Vercel'de **çalıştırılamaz** (uzun süre açık kalan WebSocket gerekir). Bir VPS, Raspberry Pi, ev sunucusu veya Render/Railway gibi sürekli açık bir hosting kullanın.
+```
+┌─────────────────┐         ┌───────────────────┐         ┌──────────────────┐
+│   Randevora     │  HTTPS  │   Bu Worker       │   WS    │   WhatsApp Web   │
+│   (Vercel)      │ ──────► │   (sizin sunucu)  │ ──────► │   sunucuları     │
+└─────────────────┘         └───────────────────┘         └──────────────────┘
+                              auth/<businessId>/
+                              (oturum dosyaları)
+```
+
+> **ÖNEMLİ:** Bu servis **Vercel'de çalışmaz** (uzun süre açık WebSocket gerekir). VPS / Raspberry Pi / Railway / Render kullanın.
 
 ---
 
-## Hızlı başlangıç (yerel)
+## 1) Worker'ı bir yere kur
+
+### Yol A — Hetzner VPS (önerilen, ~4 €/ay)
 
 ```bash
-cd whatsapp-worker
+ssh root@<sunucu-ip>
+git clone https://github.com/kutas13/randevora.git
+cd randevora/whatsapp-worker
 cp .env.example .env
-# .env içindeki NOTIFY_WEBHOOK_SECRET'i güçlü bir değerle doldurun
+nano .env   # NOTIFY_WEBHOOK_SECRET'i guclu bir deger ile doldur
 npm install
-npm start
-```
-
-Çıktıda `Worker dinleniyor` görünce tarayıcıdan açın:
-
-- `http://localhost:3001/qr` — QR kodunu telefonunuzdan okutun
-  - WhatsApp → Ayarlar → **Bağlı Cihazlar** → **Cihaz Bağla**
-- Bağlantı tamamlandığında `http://localhost:3001/status` → `state: "open"` olur.
-
-> Alternatif: telefon doğrulamayla 8 haneli pairing kodu:
-> ```bash
-> curl -X POST http://localhost:3001/pair \
->   -H "Authorization: Bearer <NOTIFY_WEBHOOK_SECRET>" \
->   -H "Content-Type: application/json" \
->   -d '{"phone":"+905456036547"}'
-> ```
-
----
-
-## Endpoint'ler
-
-| Method | Path | Açıklama |
-|--------|------|----------|
-| GET | `/` | Worker bilgisi |
-| GET | `/status` | Bağlantı durumu (`state: starting/qr/connecting/open/close`) |
-| GET | `/qr` | Aktif QR kodu (HTML ile render) — `Accept: image/png` ile PNG döner |
-| POST | `/pair` | Pairing kodu iste — body: `{ "phone": "+905..." }` |
-| POST | `/send` | Mesaj gönder — body: `{ "recipient": "+905...", "message": "..." }` |
-| POST | `/logout` | Oturumu kapat |
-
-> `POST` endpoint'leri **`Authorization: Bearer <NOTIFY_WEBHOOK_SECRET>`** ister.
-
----
-
-## Randevora (Vercel) tarafı
-
-Vercel projesinin ortam değişkenlerine ekleyin:
-
-```
-NOTIFY_WEBHOOK_URL=https://<worker-domainin>.com/send
-NOTIFY_WEBHOOK_SECRET=<aynı-değer>
-```
-
-Artık Randevora'da bir randevu alındığında veya kapora ödendiğinde, `app/api/cron/process-notifications` günde bir kez (Hobby plan) veya dış cron servisiyle daha sık tetiklenince bu worker'a POST atar; worker mesajı WhatsApp üzerinden gönderir.
-
----
-
-## Production deploy seçenekleri
-
-### Seçenek A — Hetzner / Contabo VPS (~3-5 €/ay)
-
-```bash
-# Sunucuya ssh
-git clone <bu repo>
-cd whatsapp-worker
-cp .env.example .env
-nano .env   # değişkenleri doldur
-npm install
-# PM2 ile her zaman ayakta tut
-npm i -g pm2
+npm install -g pm2
 pm2 start server.js --name wa
 pm2 save && pm2 startup
 ```
 
-Sonra Caddy/Nginx ile **HTTPS** verin:
+HTTPS için (Caddy önerilir, otomatik Let's Encrypt):
 
-```caddy
+```bash
+apt install -y caddy
+cat > /etc/caddy/Caddyfile <<EOF
 wa.randevora.com.tr {
   reverse_proxy localhost:3001
 }
+EOF
+systemctl reload caddy
 ```
 
-`NOTIFY_WEBHOOK_URL=https://wa.randevora.com.tr/send`
+DNS'te `wa.randevora.com.tr` → sunucu IP'si A kaydını ekleyin.
 
-### Seçenek B — Docker
+### Yol B — Railway / Render
+
+- Yeni proje → Bu repo → root directory: `whatsapp-worker`
+- Start command: `node server.js`
+- Persistent disk: `/app/auth`
+- Env:
+  - `NOTIFY_WEBHOOK_SECRET=<güçlü-değer>`
+  - `PORT=3001` (Railway/Render kendi `PORT`'unu enjekte eder)
+
+### Yol C — Docker
 
 ```bash
 cd whatsapp-worker
@@ -99,24 +66,59 @@ docker run -d --name wa --restart=always \
   randevora-wa
 ```
 
-### Seçenek C — Railway / Render / Fly.io
+---
 
-- Servis tipini **Worker** veya **Web Service** seç
-- Persistent disk: `/app/auth`
-- Env: `NOTIFY_WEBHOOK_SECRET`
-- Start command: `node server.js`
+## 2) Vercel'e env ekle
+
+Vercel projesinde:
+
+```
+WHATSAPP_WORKER_URL=https://wa.randevora.com.tr
+NOTIFY_WEBHOOK_SECRET=<worker'daki ile AYNI>
+```
+
+Sonra **Redeploy** edin.
 
 ---
 
-## QR & WhatsApp Web stabilite ipuçları
+## 3) Test et
 
-1. **Telefonunuz internete bağlı olmalı.** Baileys, telefonunuzdaki resmi WhatsApp ile multi-device protokolü konuşur; mesaj göndermek için telefonun açık olması gerekmez ama ilk eşleşme için gerekir.
-2. **`auth/` klasörünü silmeyin!** Bu klasör silinirse her yeniden başlatmada QR ister.
-3. WhatsApp 5-15 dakikada bir kez ban kontrolü yapar. **Spam göndermeyin.** Saatte 50'den fazla yeni numaraya mesaj atmayın.
-4. Aynı numarayı resmi WhatsApp Business API'sinde de kullanıyorsanız çakışır — sadece birini kullanın.
+Randevora paneline gir → **Ayarlar** → "WhatsApp Bildirimleri" → **"WhatsApp bağla"** butonuna tıkla → QR çıkar.
+
+Telefondan:
+- WhatsApp → Ayarlar → **Bağlı cihazlar** → **Cihaz bağla** → QR'ı okut.
+
+Birkaç saniye içinde "Bağlı" durumuna geçer.
+
+---
+
+## Endpoint Referansı
+
+> Hepsi `Authorization: Bearer <NOTIFY_WEBHOOK_SECRET>` ister. (`/qr` hariç)
+
+| Method | Path | Açıklama |
+|--------|------|----------|
+| GET | `/` | Tüm aktif session'ların özeti |
+| POST | `/sessions/:businessId/start` | Session başlat (idempotent) |
+| GET | `/sessions/:businessId/status` | Durum: `idle/qr/connecting/open/close` |
+| GET | `/sessions/:businessId/qr?format=json` | QR (`{ dataUrl }` veya `{ state }`) |
+| GET | `/sessions/:businessId/qr` | HTML QR sayfası (preview) |
+| GET | `/sessions/:businessId/qr?format=png` | PNG QR |
+| POST | `/sessions/:businessId/pair` | `{ phone }` → 8 haneli pairing kodu |
+| POST | `/sessions/:businessId/send` | `{ recipient, message }` |
+| POST | `/sessions/:businessId/logout` | Oturumu kapat + auth temizle |
+
+---
+
+## Stabilite ipuçları
+
+1. **`auth/` klasörünü silmeyin!** Tüm bağlı işletmelerin oturumu burada. Backup alın.
+2. WhatsApp protokolünde **toplu mesaj/spam ban riski** taşır. Yalnızca **işlemsel** mesaj atın (randevu onay, hatırlatma).
+3. Aynı işletme numarasını hem Baileys hem Meta Cloud API'sinde kullanmayın — çakışır.
+4. Worker yeniden başlarsa, oturumlar `auth/` dosyalarından otomatik geri yüklenir.
 
 ---
 
 ## Disclaimer
 
-Baileys, WhatsApp tarafından resmi olarak desteklenen bir kütüphane değildir. Toplu mesaj/spam kullanımı hesap banı riski taşır. Üretimde ölçekli kullanım için **Meta Cloud API** veya **Twilio** tercih edilebilir. Bu worker ile sadece **işlemsel** (randevu onay, hatırlatma) mesajları gönderin.
+Baileys, WhatsApp tarafından resmi desteklenmiyor. Ölçekli kullanım için **Twilio** veya **Meta Cloud API** önerilir. Spam yapanlar banlanır — sorumluluk size aittir.
