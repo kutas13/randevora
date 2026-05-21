@@ -76,7 +76,7 @@ export default function HomePage() {
           <div className="animate-fade-in">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel)] px-4 py-2 text-sm text-[var(--muted)] shadow-sm">
               <Gift size={16} className="text-[var(--accent)]" />
-              10 gün ücretsiz deneme · Kart bilgisi gerekmez
+              10 gün ücretsiz deneme · İstediğin an iptal et
             </div>
 
             <h1 className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[1.1] tracking-tight md:text-7xl lg:text-8xl">
@@ -242,7 +242,7 @@ export default function HomePage() {
               </div>
               <h3 className="mt-4 text-base font-bold">10 gün ücretsiz deneme</h3>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                Kart bilgisi istemiyoruz. 10 gün boyunca tüm özellikleri ücretsiz dene.
+                Tüm özellikleri 10 gün boyunca ücretsiz kullan. Beğenmezsen iptal et.
               </p>
             </article>
             <article className="glass rounded-2xl p-5">
@@ -295,7 +295,7 @@ export default function HomePage() {
           </div>
           <h2 className="mt-6 text-3xl font-black md:text-5xl">Hemen başlayın</h2>
           <p className="mt-4 text-lg text-[var(--muted)]">
-            30 saniyede ücretsiz işletmenizi oluşturun. 10 gün ücretsiz deneme, kart gerekmez.
+            30 saniyede ücretsiz işletmenizi oluşturun. 10 gün boyunca tüm özellikleri ücretsiz deneyin.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/register">

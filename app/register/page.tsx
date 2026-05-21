@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 
 const benefits = [
   "10 gün ücretsiz deneme",
-  "Kart bilgisi gerekmez",
   "Sınırsız randevu",
   "Her personele özel link",
   "Tek tıkla iptal",
