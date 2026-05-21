@@ -3,17 +3,20 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useBusinessId } from "@/lib/hooks/use-business";
 
 const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 export function MonthlyView({ date }: { date: Date }) {
   const [appointmentDays, setAppointmentDays] = useState<number[]>([]);
   const supabase = createClient();
+  const { businessId } = useBusinessId();
 
   const year = date.getFullYear();
   const month = date.getMonth();
 
   useEffect(() => {
+    if (!businessId) return;
     async function load() {
       const start = new Date(year, month, 1).toISOString();
       const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -21,6 +24,7 @@ export function MonthlyView({ date }: { date: Date }) {
       const { data } = await supabase
         .from("appointments")
         .select("starts_at")
+        .eq("business_id", businessId)
         .gte("starts_at", start)
         .lte("starts_at", end)
         .in("status", ["pending", "confirmed"]);
@@ -29,7 +33,7 @@ export function MonthlyView({ date }: { date: Date }) {
       setAppointmentDays([...new Set(days)]);
     }
     load();
-  }, [year, month]);
+  }, [year, month, businessId]);
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);

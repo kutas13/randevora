@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useBusinessId } from "@/lib/hooks/use-business";
 
 const hours = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 const days = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -16,8 +17,10 @@ type CalendarAppointment = {
 export function CalendarBoard() {
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const supabase = createClient();
+  const { businessId } = useBusinessId();
 
   useEffect(() => {
+    if (!businessId) return;
     async function load() {
       const now = new Date();
       const startOfWeek = new Date(now);
@@ -29,6 +32,7 @@ export function CalendarBoard() {
       const { data } = await supabase
         .from("appointments")
         .select("id, starts_at, customer:customers(full_name, phone), service:services(name, color)")
+        .eq("business_id", businessId)
         .gte("starts_at", startOfWeek.toISOString())
         .lt("starts_at", endOfWeek.toISOString())
         .in("status", ["pending", "confirmed"]);
@@ -42,7 +46,7 @@ export function CalendarBoard() {
       setAppointments(mapped);
     }
     load();
-  }, []);
+  }, [businessId]);
 
   function getSlotAppointments(day: string, hour: string) {
     return appointments.filter((apt) => {

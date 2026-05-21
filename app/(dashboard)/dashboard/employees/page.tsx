@@ -37,10 +37,18 @@ export default function EmployeesPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
-  useEffect(() => { loadEmployees(); }, []);
+  useEffect(() => {
+    if (!businessId) return;
+    loadEmployees();
+  }, [businessId]);
 
   async function loadEmployees() {
-    const { data } = await supabase.from("employees").select("*").order("created_at", { ascending: false });
+    if (!businessId) return;
+    const { data } = await supabase
+      .from("employees")
+      .select("*")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: false });
     setEmployees(data || []);
     setLoading(false);
   }

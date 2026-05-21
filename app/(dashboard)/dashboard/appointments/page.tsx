@@ -59,7 +59,16 @@ export default function AppointmentsPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
-  useEffect(() => { loadAppointments(); loadOptions(); loadUserRole(); loadBlockedDates(); }, []);
+  useEffect(() => {
+    loadUserRole();
+  }, []);
+
+  useEffect(() => {
+    if (!businessId) return;
+    loadAppointments();
+    loadOptions();
+    loadBlockedDates();
+  }, [businessId]);
 
   async function loadUserRole() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -76,9 +85,11 @@ export default function AppointmentsPage() {
   }
 
   async function loadAppointments() {
+    if (!businessId) return;
     const { data } = await supabase
       .from("appointments")
       .select("*, customer:customers(full_name, phone), employee:employees(full_name), service:services(name, color, duration_minutes, price_cents)")
+      .eq("business_id", businessId)
       .order("starts_at", { ascending: false })
       .limit(50);
     setAppointments(data || []);
@@ -86,19 +97,30 @@ export default function AppointmentsPage() {
   }
 
   async function loadOptions() {
+    if (!businessId) return;
     const [sRes, eRes, cRes] = await Promise.all([
-      supabase.from("services").select("id, name, duration_minutes, price_cents").eq("active", true),
-      supabase.from("employees").select("id, full_name").eq("active", true),
-      supabase.from("customers").select("id, full_name, phone").order("full_name"),
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes, price_cents")
+        .eq("business_id", businessId)
+        .eq("active", true),
+      supabase
+        .from("employees")
+        .select("id, full_name")
+        .eq("business_id", businessId)
+        .eq("active", true),
+      supabase
+        .from("customers")
+        .select("id, full_name, phone")
+        .eq("business_id", businessId)
+        .order("full_name"),
     ]);
     setServices(sRes.data || []);
     setEmployees(eRes.data || []);
     setCustomers(cRes.data || []);
 
-    if (businessId) {
-      const { data: biz } = await supabase.from("businesses").select("slot_merge").eq("id", businessId).single();
-      if (biz) setSlotMerge(biz.slot_merge !== false);
-    }
+    const { data: biz } = await supabase.from("businesses").select("slot_merge").eq("id", businessId).single();
+    if (biz) setSlotMerge(biz.slot_merge !== false);
   }
 
   async function loadBusySlots(date: string, employeeId: string) {
@@ -231,7 +253,11 @@ export default function AppointmentsPage() {
   }
 
   async function loadBlockedDates() {
-    const { data } = await supabase.from("blocked_dates").select("employee_id, starts_at, reason, recurring");
+    if (!businessId) return;
+    const { data } = await supabase
+      .from("blocked_dates")
+      .select("employee_id, starts_at, reason, recurring")
+      .eq("business_id", businessId);
     setBlockedDates(data || []);
   }
 

@@ -28,10 +28,18 @@ export default function CustomersPage() {
   const supabase = createClient();
   const { toast } = useToast();
 
-  useEffect(() => { loadCustomers(); }, []);
+  useEffect(() => {
+    if (!businessId) return;
+    loadCustomers();
+  }, [businessId]);
 
   async function loadCustomers() {
-    const { data } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
+    if (!businessId) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: false });
     setCustomers(data || []);
     setLoading(false);
   }

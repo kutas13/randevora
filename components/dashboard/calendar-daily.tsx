@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useBusinessId } from "@/lib/hooks/use-business";
 
 const hours = Array.from({ length: 10 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
@@ -17,8 +18,10 @@ type DayAppointment = {
 export function DailyView({ date }: { date: Date }) {
   const [appointments, setAppointments] = useState<DayAppointment[]>([]);
   const supabase = createClient();
+  const { businessId } = useBusinessId();
 
   useEffect(() => {
+    if (!businessId) return;
     async function load() {
       const start = new Date(date);
       start.setHours(0, 0, 0, 0);
@@ -28,6 +31,7 @@ export function DailyView({ date }: { date: Date }) {
       const { data } = await supabase
         .from("appointments")
         .select("id, starts_at, ends_at, customer:customers(full_name, phone), employee:employees(full_name), service:services(name, color)")
+        .eq("business_id", businessId)
         .gte("starts_at", start.toISOString())
         .lte("starts_at", end.toISOString())
         .in("status", ["pending", "confirmed"])
@@ -44,7 +48,7 @@ export function DailyView({ date }: { date: Date }) {
       setAppointments(mapped);
     }
     load();
-  }, [date]);
+  }, [date, businessId]);
 
   const dayLabel = date.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 

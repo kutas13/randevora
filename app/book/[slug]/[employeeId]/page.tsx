@@ -32,7 +32,7 @@ export default async function EmployeeBookingPage({ params }: { params: Promise<
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, duration_minutes, price_cents, price_variable, color")
+    .select("id, name, duration_minutes, duration_max_minutes, price_cents, price_max_cents, price_variable, color")
     .eq("business_id", business.id)
     .eq("active", true);
 

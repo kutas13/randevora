@@ -34,7 +34,7 @@ export default async function BusinessSlugPage({ params }: { params: Promise<{ s
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, duration_min, price_cents, color")
+    .select("id, name, duration_minutes, duration_max_minutes, price_cents, price_max_cents, price_variable, color")
     .eq("business_id", business.id)
     .eq("active", true);
 
@@ -86,18 +86,32 @@ export default async function BusinessSlugPage({ params }: { params: Promise<{ s
           <section className="glass rounded-xl p-5">
             <h2 className="text-xl font-bold">Hizmetlerimiz</h2>
             <div className="mt-5 grid gap-2.5">
-              {(services || []).map((service) => (
-                <div key={service.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3.5 transition-all duration-200 hover:border-[var(--accent)] hover:shadow-sm">
-                  <span className="flex items-center gap-3">
-                    <span className="size-3 rounded-full" style={{ background: service.color || "#888" }} />
-                    <span>
-                      <strong className="block">{service.name}</strong>
-                      <small className="flex items-center gap-1 text-[var(--muted)]"><Clock size={13} /> {service.duration_min >= 60 && service.duration_min % 60 === 0 ? `${service.duration_min / 60} saat` : `${service.duration_min} dk`}</small>
+              {(services || []).map((service) => {
+                const minDur = service.duration_minutes;
+                const maxDur = service.duration_max_minutes;
+                const durLabel = (m: number) => (m >= 60 && m % 60 === 0 ? `${m / 60} saat` : `${m} dk`);
+                const durationText = maxDur && maxDur > minDur ? `${durLabel(minDur)} – ${durLabel(maxDur)}` : durLabel(minDur);
+                const priceText = service.price_max_cents && service.price_max_cents > service.price_cents
+                  ? `${formatMoney(service.price_cents)} – ${formatMoney(service.price_max_cents)}`
+                  : formatMoney(service.price_cents);
+                return (
+                  <div key={service.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3.5 transition-all duration-200 hover:border-[var(--accent)] hover:shadow-sm">
+                    <span className="flex items-center gap-3">
+                      <span className="size-3 rounded-full" style={{ background: service.color || "#888" }} />
+                      <span>
+                        <strong className="block">{service.name}</strong>
+                        <small className="flex items-center gap-1 text-[var(--muted)]"><Clock size={13} /> {durationText}</small>
+                      </span>
                     </span>
-                  </span>
-                  <strong className="text-lg">{formatMoney(service.price_cents)}</strong>
-                </div>
-              ))}
+                    <div className="text-right">
+                      <strong className="text-lg">{priceText}</strong>
+                      {service.price_variable && !(service.price_max_cents && service.price_max_cents > service.price_cents) && (
+                        <p className="text-[10px] text-orange-600 dark:text-orange-400">Değişkenlik gösterebilir</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               {(!services || services.length === 0) && (
                 <p className="text-sm text-[var(--muted)]">Henüz hizmet eklenmemiş.</p>
               )}

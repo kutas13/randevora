@@ -3,10 +3,26 @@
 import { useEffect, useState } from "react";
 import { CalendarClock, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 import { formatMoney } from "@/lib/utils";
 
-type Service = { id: string; name: string; duration_minutes: number; price_cents: number; price_variable: boolean; color: string };
+type Service = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  duration_max_minutes: number | null;
+  price_cents: number;
+  price_max_cents: number | null;
+  price_variable: boolean;
+  color: string;
+};
+
+function formatDurationLabel(min: number) {
+  return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dakika`;
+}
+
+function formatDurationShort(min: number) {
+  return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dk`;
+}
 type Employee = { id: string; full_name: string; title: string | null };
 type WorkingHour = { employee_id: string; weekday: number; starts_at: string; ends_at: string };
 type BlockedDate = { employee_id: string; starts_at: string; ends_at: string; reason?: string | null; recurring?: boolean };
@@ -30,7 +46,11 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const selectedService = selectedServices.length > 0 ? selectedServices[0] : null;
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
+  const totalDurationMax = selectedServices.reduce((sum, s) => sum + (s.duration_max_minutes || s.duration_minutes), 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
+  const totalPriceMax = selectedServices.reduce((sum, s) => sum + (s.price_max_cents || s.price_cents), 0);
+  const hasDurationRange = totalDurationMax > totalDuration;
+  const hasPriceRange = totalPriceMax > totalPrice;
   const [selectedEmployee, setSelectedEmployee] = useState<string>(fixedEmployeeId || "");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -39,8 +59,6 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [busySlots, setBusySlots] = useState<string[]>([]);
-
-  const supabase = createClient();
 
   // Randevu kabul süresi hesapla
   const today = new Date();
@@ -113,32 +131,17 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       const empId = fixedEmployeeId || selectedEmployee;
       if (!date || !empId) { setBusySlots([]); return; }
 
-      const start = `${date}T00:00:00`;
-      const end = `${date}T23:59:59`;
-      const { data } = await supabase
-        .from("appointments")
-        .select("starts_at, ends_at")
-        .eq("employee_id", empId)
-        .gte("starts_at", start)
-        .lte("starts_at", end)
-        .in("status", ["pending", "confirmed"]);
-
-      const countByHour: Record<string, number> = {};
-      (data || []).forEach((a) => {
-        const s = new Date(a.starts_at);
-        const e = new Date(a.ends_at);
-        let current = new Date(s);
-        while (current < e) {
-          const hour = `${String(current.getHours()).padStart(2, "0")}:00`;
-          countByHour[hour] = (countByHour[hour] || 0) + 1;
-          current = new Date(current.getTime() + 60 * 60 * 1000);
-        }
-      });
-
-      const busy = Object.entries(countByHour)
-        .filter(([, count]) => count >= slotCapacity)
-        .map(([hour]) => hour);
-      setBusySlots(busy);
+      try {
+        const res = await fetch("/api/busy-slots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: empId, date, slotCapacity }),
+        });
+        const data = await res.json();
+        setBusySlots(Array.isArray(data?.busy) ? data.busy : []);
+      } catch {
+        setBusySlots([]);
+      }
     }
     loadBusy();
   }, [date, selectedEmployee, fixedEmployeeId, slotCapacity]);
@@ -249,12 +252,22 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                   <span className="size-3 rounded-full" style={{ background: s.color }} />
                   <div>
                     <strong className="block text-sm">{s.name}</strong>
-                    <span className="text-xs text-[var(--muted)]">{s.duration_minutes >= 60 && s.duration_minutes % 60 === 0 ? `${s.duration_minutes / 60} saat` : `${s.duration_minutes} dakika`}</span>
+                    <span className="text-xs text-[var(--muted)]">
+                      {s.duration_max_minutes && s.duration_max_minutes > s.duration_minutes
+                        ? `${formatDurationLabel(s.duration_minutes)} – ${formatDurationLabel(s.duration_max_minutes)}`
+                        : formatDurationLabel(s.duration_minutes)}
+                    </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <strong className="text-sm">{formatMoney(s.price_cents)}</strong>
-                  {s.price_variable && <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>}
+                  <strong className="text-sm">
+                    {s.price_max_cents && s.price_max_cents > s.price_cents
+                      ? `${formatMoney(s.price_cents)} – ${formatMoney(s.price_max_cents)}`
+                      : formatMoney(s.price_cents)}
+                  </strong>
+                  {s.price_variable && !(s.price_max_cents && s.price_max_cents > s.price_cents) && (
+                    <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>
+                  )}
                 </div>
               </button>
             );
@@ -262,7 +275,11 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
           {selectedServices.length > 0 && (
             <div className="flex items-center justify-between rounded-lg bg-[var(--accent)]/5 p-3 text-sm">
               <span>{selectedServices.length} hizmet seçildi</span>
-              <span className="font-bold">{formatMoney(totalPrice)} · {totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dk`}</span>
+              <span className="font-bold">
+                {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
+                {" · "}
+                {hasDurationRange ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}` : formatDurationShort(totalDuration)}
+              </span>
             </div>
           )}
           <Button onClick={nextStep} disabled={selectedServices.length === 0} className="mt-3">
@@ -338,7 +355,11 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
           {selectedServices.length > 0 && date && (
             <div className="rounded-lg bg-[var(--panel-strong)] p-3 text-sm">
-              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Toplam Süre: <strong>{totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dakika`}</strong>
+              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Toplam Süre: <strong>
+                {hasDurationRange
+                  ? `${formatDurationLabel(totalDuration)} – ${formatDurationLabel(totalDurationMax)}`
+                  : formatDurationLabel(totalDuration)}
+              </strong>
             </div>
           )}
 
@@ -366,8 +387,14 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
             <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
               <p>Hizmet: <strong className="text-[var(--foreground)]">{selectedServices.map((s) => s.name).join(", ")}</strong></p>
               <p>Tarih: <strong className="text-[var(--foreground)]">{date} {time}</strong></p>
-              <p>Toplam Süre: <strong className="text-[var(--foreground)]">{totalDuration >= 60 && totalDuration % 60 === 0 ? `${totalDuration / 60} saat` : `${totalDuration} dk`}</strong></p>
-              <p>Ücret: <strong className="text-[var(--foreground)]">{formatMoney(totalPrice)}</strong></p>
+              <p>Toplam Süre: <strong className="text-[var(--foreground)]">
+                {hasDurationRange
+                  ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}`
+                  : formatDurationShort(totalDuration)}
+              </strong></p>
+              <p>Ücret: <strong className="text-[var(--foreground)]">
+                {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
+              </strong>{hasPriceRange && <span className="ml-1 text-xs text-orange-600 dark:text-orange-400">(aralık)</span>}</p>
             </div>
           </div>
 
