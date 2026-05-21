@@ -1,6 +1,11 @@
-FROM node:20-alpine
+FROM node:20-bullseye-slim
 
 WORKDIR /app
+
+# Baileys'in native modulleri icin derleme arac/lib'leri
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Build context repo koku oldugu icin tam yol ile kopyala
 COPY whatsapp-worker/package.json ./
@@ -9,7 +14,11 @@ RUN npm install --omit=dev --no-package-lock
 
 COPY whatsapp-worker/server.js ./
 
-ENV PORT=3001
+# Auth klasoru icin yer (Railway Volume buraya mount edilecek)
+RUN mkdir -p /app/auth
+
+ENV PORT=3001 \
+    NODE_ENV=production
 EXPOSE 3001
 
 CMD ["node", "server.js"]

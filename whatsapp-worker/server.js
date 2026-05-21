@@ -38,10 +38,17 @@ const PORT = Number(process.env.PORT || 3001);
 const AUTH_SECRET = process.env.NOTIFY_WEBHOOK_SECRET || '';
 const AUTH_ROOT = process.env.AUTH_DIR || './auth';
 
-const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } },
-});
+// Production'da JSON log, dev'de pino-pretty (varsa)
+const usePretty = process.env.NODE_ENV !== 'production' && process.env.LOG_PRETTY !== '0';
+let logger;
+try {
+  logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    ...(usePretty ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : {}),
+  });
+} catch {
+  logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+}
 
 // ---------- Per-business session state ----------
 /** Map<businessId, { sock, qr, state, lastError, pairingCode }> */
@@ -85,7 +92,6 @@ async function startSession(businessId) {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
-    printQRInTerminal: false,
   });
 
   meta.sock = sock;
