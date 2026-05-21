@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+
+const REMEMBER_KEY = "randevora.remember";
 
 export default function LoginPage() {
   return (
@@ -16,7 +18,6 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
 
@@ -26,6 +27,18 @@ function LoginContent() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(errorParam || "");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data?.email) setEmail(data.email);
+        if (data?.password) setPassword(data.password);
+        setRememberMe(true);
+      }
+    } catch {}
+  }, []);
 
   // Şifremi unuttum state
   const [forgotMode, setForgotMode] = useState(false);
@@ -42,15 +55,37 @@ function LoginContent() {
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (err) {
-      setError(err.message);
+      if (err) {
+        setError(err.message || "Giriş başarısız.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.session) {
+        setError("Oturum oluşturulamadı. Lütfen tekrar deneyin.");
+        setLoading(false);
+        return;
+      }
+
+      // Beni hatirla kaydi
+      try {
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password }));
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      } catch {}
+
+      // Tam sayfa yenilemesi - cookie'nin server'a propagate olmasi icin
+      // (router.push client-side navigation, middleware bazen cookie'yi goremiyor)
+      window.location.assign("/dashboard");
+    } catch (err: any) {
+      setError(err?.message || "Beklenmedik bir hata oluştu.");
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
   }
 
   async function handleResetPassword(e: React.FormEvent) {
@@ -181,6 +216,9 @@ function LoginContent() {
             <input
               className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
               type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
               placeholder="ornek@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -193,6 +231,8 @@ function LoginContent() {
               <input
                 className="h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 pr-11 outline-none"
                 type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -208,7 +248,7 @@ function LoginContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2" htmlFor="remember">
             <input
               type="checkbox"
               id="remember"
@@ -216,8 +256,8 @@ function LoginContent() {
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
             />
-            <label htmlFor="remember" className="text-sm text-[var(--muted)] cursor-pointer">Beni hatırla</label>
-          </div>
+            <span className="text-sm text-[var(--muted)]">Beni hatırla (e-posta ve şifremi bu cihazda sakla)</span>
+          </label>
 
           <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
             {loading ? "Giriş yapılıyor..." : <>Giriş yap <ArrowRight size={18} /></>}
