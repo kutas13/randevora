@@ -111,8 +111,9 @@ export async function POST(request: NextRequest) {
       .eq("active", true);
 
     const start = new Date(startsAt);
-    const date = start.toLocaleDateString("tr-TR");
-    const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+    const TZ = "Europe/Istanbul";
+    const date = start.toLocaleDateString("tr-TR", { timeZone: TZ });
+    const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
     const serviceNames = services.map((s) => s.name).join(", ");
 
     await queueAppointmentNotifications({
