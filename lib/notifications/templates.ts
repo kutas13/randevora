@@ -17,17 +17,17 @@ export type TemplateVars = {
 
 export const DEFAULT_TEMPLATES: Record<TemplateKind, string> = {
   customer_confirmation:
-    "Merhaba {customer_name}, randevunuz oluşturuldu. ✅\nTarih: {date} {time}\nHizmet: {services}\n{business_name}",
+    "Sayın {customer_name},\n\nRandevunuz başarıyla oluşturulmuştur.\n\n• Tarih: {date}\n• Saat: {time}\n• Hizmet: {services}\n\nBelirtilen tarihte sizi aramızda görmekten memnuniyet duyacağız.\n\nSaygılarımızla,\n{business_name}",
   customer_reminder_24h:
-    "Merhaba {customer_name}, yarın {time} saatinde randevunuz var. {business_name} olarak sizi bekliyoruz! 🙌",
+    "Sayın {customer_name},\n\nYarın saat {time}'de {business_name} adına alınan randevunuzu hatırlatmak isteriz.\n\n• Tarih: {date}\n• Saat: {time}\n• Hizmet: {services}\n\nDeğişiklik veya iptal talepleriniz için lütfen bizimle iletişime geçiniz.\n\nSaygılarımızla,\n{business_name}",
   customer_reminder_2h:
-    "Merhaba {customer_name}, bugün {time} saatindeki randevunuza 2 saat kaldı. Görüşmek üzere! 👋",
+    "Sayın {customer_name},\n\nBugün saat {time}'deki randevunuza 2 saat kalmıştır.\n\n• Hizmet: {services}\n\nSizi aramızda görmekten memnuniyet duyacağız.\n\nSaygılarımızla,\n{business_name}",
   employee_new_booking:
-    "Yeni randevu! 📅\n{customer_name} ({customer_phone})\nTarih: {date} {time}\nHizmet: {services}",
+    "Yeni randevu kaydı:\n\n• Müşteri: {customer_name}\n• Telefon: {customer_phone}\n• Tarih: {date}\n• Saat: {time}\n• Hizmet: {services}\n\n{business_name}",
   employee_reminder_24h:
-    "Yarın {time} saatinde randevu: {customer_name} ({customer_phone}) — {services}",
+    "Yarın saat {time}'de randevunuz bulunmaktadır:\n\n• Müşteri: {customer_name}\n• Telefon: {customer_phone}\n• Hizmet: {services}\n\n{business_name}",
   employee_reminder_2h:
-    "2 saat sonra randevu: {customer_name} ({customer_phone}) — {services} ({time})",
+    "2 saat sonra randevunuz bulunmaktadır:\n\n• Saat: {time}\n• Müşteri: {customer_name}\n• Telefon: {customer_phone}\n• Hizmet: {services}\n\n{business_name}",
 };
 
 export function renderTemplate(template: string, vars: TemplateVars): string {

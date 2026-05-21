@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
+import { LANGS, getDict, type BookingLang } from "@/components/booking/translations";
 
 type Service = {
   id: string;
@@ -18,12 +19,14 @@ type Service = {
   color: string;
 };
 
-function formatDurationLabel(min: number) {
-  return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dakika`;
+function formatDurationLabel(min: number, lang: BookingLang) {
+  const d = getDict(lang);
+  return min >= 60 && min % 60 === 0 ? `${min / 60} ${d.hour_long}` : `${min} ${d.minute_long}`;
 }
 
-function formatDurationShort(min: number) {
-  return min >= 60 && min % 60 === 0 ? `${min / 60} saat` : `${min} dk`;
+function formatDurationShort(min: number, lang: BookingLang) {
+  const d = getDict(lang);
+  return min >= 60 && min % 60 === 0 ? `${min / 60} ${d.hour_short}` : `${min} ${d.minute_short}`;
 }
 type Employee = { id: string; full_name: string; title: string | null };
 type WorkingHour = { employee_id: string; weekday: number; starts_at: string; ends_at: string };
@@ -45,6 +48,20 @@ type Step = "service" | "employee" | "datetime" | "info" | "done";
 
 export function BookingForm({ businessId, services, employees, fixedEmployeeId, workingHours = [], blockedDates = [], bookingWindow = "weekly", slotCapacity = 1, slotMerge = true }: Props) {
   const [step, setStep] = useState<Step>("service");
+  const [lang, setLang] = useState<BookingLang>("tr");
+  const t = useMemo(() => getDict(lang), [lang]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("randevora_lang") as BookingLang | null;
+      if (saved && (LANGS.some((l) => l.code === saved))) setLang(saved);
+    } catch {}
+  }, []);
+
+  function changeLang(code: BookingLang) {
+    setLang(code);
+    try { localStorage.setItem("randevora_lang", code); } catch {}
+  }
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const selectedService = selectedServices.length > 0 ? selectedServices[0] : null;
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
@@ -181,6 +198,19 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     }
   }
 
+  function prevStep() {
+    if (step === "info") {
+      setStep("datetime");
+    } else if (step === "datetime") {
+      if (fixedEmployeeId) setStep("service");
+      else setStep("employee");
+    } else if (step === "employee") {
+      setStep("service");
+    }
+  }
+
+  const canGoBack = step !== "service" && step !== "done";
+
   function toggleService(s: Service) {
     setSelectedServices((prev) =>
       prev.find((ps) => ps.id === s.id)
@@ -190,9 +220,9 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   }
 
   async function handleSubmit() {
-    if (!name.trim() || !phone.trim()) { setError("Ad ve telefon gerekli."); return; }
+    if (!name.trim() || !phone.trim()) { setError(t.err_name_phone); return; }
     if (totalDeposit > 0 && !email.trim()) {
-      setError("Kapora ödemesi için e-posta gerekli.");
+      setError(t.err_email_deposit);
       return;
     }
     setSubmitting(true);
@@ -225,7 +255,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "Randevu oluşturulamadı.");
+      setError(data.error || t.err_booking);
       setSubmitting(false);
       return;
     }
@@ -256,11 +286,11 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
         <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-400/15">
           <Check size={32} className="text-green-600" />
         </div>
-        <h2 className="mt-5 text-2xl font-bold">Randevunuz alındı!</h2>
+        <h2 className="mt-5 text-2xl font-bold">{t.done_title}</h2>
         <p className="mt-2 text-[var(--muted)]">
           {selectedServices.map((s) => s.name).join(", ")} · {date} {time}
         </p>
-        <p className="mt-4 text-sm text-[var(--muted)]">İşletme onayladıktan sonra randevunuz kesinleşecektir.</p>
+        <p className="mt-4 text-sm text-[var(--muted)]">{t.done_subtitle}</p>
       </div>
     );
   }
@@ -269,20 +299,56 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
   return (
     <div className="glass rounded-2xl p-6">
+      {/* Top bar: back + language */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={prevStep}
+          disabled={!canGoBack}
+          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+            canGoBack
+              ? "border-[var(--line)] bg-[var(--panel-strong)] text-[var(--foreground)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+              : "invisible"
+          }`}
+          aria-label={t.back_btn}
+        >
+          <ChevronLeft size={14} />
+          {t.back_btn}
+        </button>
+        <div className="flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--panel-strong)] p-0.5 text-xs">
+          {LANGS.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              onClick={() => changeLang(l.code)}
+              className={`flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
+                lang === l.code
+                  ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
+              }`}
+              aria-label={l.label}
+            >
+              <span aria-hidden>{l.flag}</span>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Progress */}
       <div className="mb-6 flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
-        <StepIndicator label="Hizmet" active={step === "service"} done={step !== "service"} />
+        <StepIndicator label={t.step_service} active={step === "service"} done={step !== "service"} />
         <ChevronRight size={12} />
-        {!fixedEmployeeId && <><StepIndicator label="Personel" active={step === "employee"} done={step === "datetime" || step === "info"} /><ChevronRight size={12} /></>}
-        <StepIndicator label="Tarih & Saat" active={step === "datetime"} done={step === "info"} />
+        {!fixedEmployeeId && <><StepIndicator label={t.step_employee} active={step === "employee"} done={step === "datetime" || step === "info"} /><ChevronRight size={12} /></>}
+        <StepIndicator label={t.step_datetime} active={step === "datetime"} done={step === "info"} />
         <ChevronRight size={12} />
-        <StepIndicator label="Bilgiler" active={step === "info"} done={false} />
+        <StepIndicator label={t.step_info} active={step === "info"} done={false} />
       </div>
 
       {/* Hizmet seçimi */}
       {step === "service" && (
         <div className="grid gap-3">
-          <h2 className="text-lg font-bold">Hizmet seçin <span className="text-sm font-normal text-[var(--muted)]">(birden fazla seçebilirsiniz)</span></h2>
+          <h2 className="text-lg font-bold">{t.select_service} <span className="text-sm font-normal text-[var(--muted)]">{t.multi_select_hint}</span></h2>
           {services.map((s) => {
             const isSelected = selectedServices.some((ps) => ps.id === s.id);
             return (
@@ -300,8 +366,8 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                     <strong className="block text-sm">{s.name}</strong>
                     <span className="text-xs text-[var(--muted)]">
                       {s.duration_max_minutes && s.duration_max_minutes > s.duration_minutes
-                        ? `${formatDurationLabel(s.duration_minutes)} – ${formatDurationLabel(s.duration_max_minutes)}`
-                        : formatDurationLabel(s.duration_minutes)}
+                        ? `${formatDurationLabel(s.duration_minutes, lang)} – ${formatDurationLabel(s.duration_max_minutes, lang)}`
+                        : formatDurationLabel(s.duration_minutes, lang)}
                     </span>
                   </div>
                 </div>
@@ -312,11 +378,11 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                       : formatMoney(s.price_cents)}
                   </strong>
                   {s.price_variable && !(s.price_max_cents && s.price_max_cents > s.price_cents) && (
-                    <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>
+                    <p className="text-[10px] text-orange-600">{t.variable_price}</p>
                   )}
                   {s.deposit_cents > 0 && (
                     <p className="text-[10px] font-semibold text-teal-700 dark:text-teal-300">
-                      Kapora: {formatMoney(s.deposit_cents)}
+                      {t.deposit_label}: {formatMoney(s.deposit_cents)}
                     </p>
                   )}
                 </div>
@@ -326,23 +392,23 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
           {selectedServices.length > 0 && (
             <div className="grid gap-2 rounded-lg bg-[var(--accent)]/5 p-3 text-sm">
               <div className="flex items-center justify-between">
-                <span>{selectedServices.length} hizmet seçildi</span>
+                <span>{t.services_selected(selectedServices.length)}</span>
                 <span className="font-bold">
                   {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
                   {" · "}
-                  {hasDurationRange ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}` : formatDurationShort(totalDuration)}
+                  {hasDurationRange ? `${formatDurationShort(totalDuration, lang)} – ${formatDurationShort(totalDurationMax, lang)}` : formatDurationShort(totalDuration, lang)}
                 </span>
               </div>
               {totalDeposit > 0 && (
                 <div className="flex items-center justify-between rounded-md bg-teal-100 px-2 py-1 text-xs font-semibold text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
-                  <span>Şimdi ödenecek kapora</span>
+                  <span>{t.deposit_now}</span>
                   <span>{formatMoney(totalDeposit)}</span>
                 </div>
               )}
             </div>
           )}
           <Button onClick={nextStep} disabled={selectedServices.length === 0} className="mt-3">
-            Devam
+            {t.continue_btn}
           </Button>
         </div>
       )}
@@ -350,7 +416,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       {/* Personel seçimi */}
       {step === "employee" && (
         <div className="grid gap-3">
-          <h2 className="text-lg font-bold">Personel seçin</h2>
+          <h2 className="text-lg font-bold">{t.select_employee}</h2>
           {employees.map((emp) => (
             <button
               key={emp.id}
@@ -362,12 +428,12 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
               </span>
               <div>
                 <strong className="block text-sm">{emp.full_name}</strong>
-                <span className="text-xs text-[var(--muted)]">{emp.title || "Personel"}</span>
+                <span className="text-xs text-[var(--muted)]">{emp.title || t.default_staff_title}</span>
               </div>
             </button>
           ))}
           <Button onClick={nextStep} disabled={!selectedEmployee} className="mt-3">
-            Devam
+            {t.continue_btn}
           </Button>
         </div>
       )}
@@ -375,17 +441,18 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       {/* Tarih ve saat */}
       {step === "datetime" && (
         <div className="grid gap-4">
-          <h2 className="text-lg font-bold">Tarih ve saat seçin</h2>
+          <h2 className="text-lg font-bold">{t.select_date_time}</h2>
           <WeekCalendar
             value={date}
             onChange={(d) => { setDate(d); setTime(""); }}
             maxDate={maxBookingDate}
             isBlocked={isBlockedDay}
+            lang={lang}
           />
 
           {date && (
             <div>
-              <p className="mb-2 text-sm font-semibold">Uygun saatler</p>
+              <p className="mb-2 text-sm font-semibold">{t.available_times}</p>
               <div className="grid grid-cols-4 gap-2">
                 {availableHours.map((slot) => {
                   const isBusy = busySlots.includes(slot);
@@ -414,16 +481,16 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
           {selectedServices.length > 0 && date && (
             <div className="rounded-lg bg-[var(--panel-strong)] p-3 text-sm">
-              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> Toplam Süre: <strong>
+              <CalendarClock size={14} className="mb-1 inline text-[var(--accent)]" /> {t.total_duration}: <strong>
                 {hasDurationRange
-                  ? `${formatDurationLabel(totalDuration)} – ${formatDurationLabel(totalDurationMax)}`
-                  : formatDurationLabel(totalDuration)}
+                  ? `${formatDurationLabel(totalDuration, lang)} – ${formatDurationLabel(totalDurationMax, lang)}`
+                  : formatDurationLabel(totalDuration, lang)}
               </strong>
             </div>
           )}
 
           <Button onClick={nextStep} disabled={!date || !time} className="mt-2">
-            Devam
+            {t.continue_btn}
           </Button>
         </div>
       )}
@@ -431,62 +498,60 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
       {/* Kişi bilgileri */}
       {step === "info" && (
         <div className="grid gap-4">
-          <h2 className="text-lg font-bold">Bilgileriniz</h2>
+          <h2 className="text-lg font-bold">{t.your_details}</h2>
           <div>
-            <label className="text-sm font-semibold">Ad Soyad</label>
-            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Adınız Soyadınız" value={name} onChange={(e) => setName(e.target.value)} />
+            <label className="text-sm font-semibold">{t.full_name}</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder={t.full_name_ph} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm font-semibold">Telefon</label>
-            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="+90 5xx xxx xx xx" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <label className="text-sm font-semibold">{t.phone}</label>
+            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder={t.phone_ph} value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div>
             <label className="text-sm font-semibold">
-              E-posta {totalDeposit > 0 ? <span className="text-red-600">*</span> : <span className="text-xs font-normal text-[var(--muted)]">(opsiyonel)</span>}
+              {t.email} {totalDeposit > 0 ? <span className="text-red-600">{t.email_required}</span> : <span className="text-xs font-normal text-[var(--muted)]">{t.email_optional}</span>}
             </label>
             <input
               type="email"
               className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
-              placeholder="ornek@eposta.com"
+              placeholder={t.email_ph}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             {totalDeposit > 0 && (
-              <p className="mt-1 text-xs text-[var(--muted)]">Kapora ödemesi için e-posta gerekli.</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">{t.email_for_deposit}</p>
             )}
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
-            <h3 className="text-sm font-bold">Randevu özeti</h3>
+            <h3 className="text-sm font-bold">{t.booking_summary}</h3>
             <div className="mt-2 grid gap-1 text-sm text-[var(--muted)]">
-              <p>Hizmet: <strong className="text-[var(--foreground)]">{selectedServices.map((s) => s.name).join(", ")}</strong></p>
-              <p>Tarih: <strong className="text-[var(--foreground)]">{date} {time}</strong></p>
-              <p>Toplam Süre: <strong className="text-[var(--foreground)]">
+              <p>{t.service_label}: <strong className="text-[var(--foreground)]">{selectedServices.map((s) => s.name).join(", ")}</strong></p>
+              <p>{t.date_label}: <strong className="text-[var(--foreground)]">{date} {time}</strong></p>
+              <p>{t.duration_label}: <strong className="text-[var(--foreground)]">
                 {hasDurationRange
-                  ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}`
-                  : formatDurationShort(totalDuration)}
+                  ? `${formatDurationShort(totalDuration, lang)} – ${formatDurationShort(totalDurationMax, lang)}`
+                  : formatDurationShort(totalDuration, lang)}
               </strong></p>
-              <p>Ücret: <strong className="text-[var(--foreground)]">
+              <p>{t.price_label}: <strong className="text-[var(--foreground)]">
                 {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
-              </strong>{hasPriceRange && <span className="ml-1 text-xs text-orange-600 dark:text-orange-400">(aralık)</span>}</p>
+              </strong>{hasPriceRange && <span className="ml-1 text-xs text-orange-600 dark:text-orange-400">{t.price_range_note}</span>}</p>
             </div>
             {totalDeposit > 0 && (
               <div className="mt-3 flex items-center justify-between rounded-lg bg-teal-50 p-3 text-sm font-bold text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
-                <span>Şimdi ödenecek kapora</span>
+                <span>{t.deposit_pay_now}</span>
                 <span>{formatMoney(totalDeposit)}</span>
               </div>
             )}
             {totalDeposit > 0 && (
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                "Randevu al ve kaporayı öde" butonuna bastığınızda iyzico güvenli ödeme sayfasına yönlendirileceksiniz.
-              </p>
+              <p className="mt-2 text-xs text-[var(--muted)]">{t.iyzico_note}</p>
             )}
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <Button onClick={handleSubmit} disabled={submitting} className="mt-2">
-            {submitting ? "Yönlendiriliyor..." : totalDeposit > 0 ? `Randevu al ve ${formatMoney(totalDeposit)} kapora öde` : "Randevu al"}
+            {submitting ? t.submitting : totalDeposit > 0 ? t.book_with_deposit(formatMoney(totalDeposit)) : t.book_btn}
           </Button>
         </div>
       )}
@@ -502,7 +567,7 @@ function StepIndicator({ label, active, done }: { label: string; active: boolean
   );
 }
 
-function WeekCalendar({ value, onChange, maxDate, isBlocked }: { value: string; onChange: (d: string) => void; maxDate: Date; isBlocked: (d: string) => boolean }) {
+function WeekCalendar({ value, onChange, maxDate, isBlocked, lang }: { value: string; onChange: (d: string) => void; maxDate: Date; isBlocked: (d: string) => boolean; lang: BookingLang }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -514,12 +579,13 @@ function WeekCalendar({ value, onChange, maxDate, isBlocked }: { value: string; 
     current.setDate(current.getDate() + 1);
   }
 
-  const dayLabels = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-  const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+  const dict = getDict(lang);
+  const dayLabels = dict.weekdays_short;
+  const monthNames = dict.months_short;
 
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
-      <p className="mb-3 text-center text-xs font-semibold text-[var(--muted)]">Bu hafta</p>
+      <p className="mb-3 text-center text-xs font-semibold text-[var(--muted)]">{dict.this_week}</p>
       <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
