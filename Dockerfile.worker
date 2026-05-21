@@ -2,13 +2,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# package.json'i kopyala (build context whatsapp-worker veya repo koku olabilir)
-COPY package*.json ./
+# Build context repo koku oldugu icin tam yol ile kopyala
+COPY whatsapp-worker/package.json ./
 
 RUN npm install --omit=dev --no-package-lock
 
-# Sunucu dosyasini kopyala
-COPY server.js ./
+COPY whatsapp-worker/server.js ./
 
 VOLUME ["/app/auth"]
 
