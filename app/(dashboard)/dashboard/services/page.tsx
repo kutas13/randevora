@@ -289,112 +289,280 @@ export default function ServicesPage() {
       </main>
 
       {/* Ekleme Modalı */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Yeni hizmet ekle">
-        <div className="grid gap-4">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Yeni hizmet ekle"
+        description="Müşterilerin randevu alırken göreceği hizmeti tanımlayın."
+        size="lg"
+      >
+        <div className="grid gap-5">
           <div>
             <label className="text-sm font-semibold">Hizmet adı</label>
-            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Örn: Saç Kesimi" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input
+              className="mt-1.5 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm outline-none transition focus:border-[var(--accent)]"
+              placeholder="Örn: Saç Kesimi"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
           </div>
 
-          <div>
-            <label className="text-sm font-semibold">Süre aralığı</label>
-            <div className="mt-1 grid grid-cols-[1fr_1fr_auto] gap-2">
-              <input type="number" min={1} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Min" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
-              <input type="number" min={1} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max (opsiyonel)" value={form.durationMax} onChange={(e) => setForm({ ...form, durationMax: e.target.value })} />
-              <select className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={form.durationUnit} onChange={(e) => setForm({ ...form, durationUnit: e.target.value as "dk" | "saat" })}>
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Süre</h3>
+              <select
+                className="h-9 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 text-xs outline-none"
+                value={form.durationUnit}
+                onChange={(e) => setForm({ ...form, durationUnit: e.target.value as "dk" | "saat" })}
+              >
                 <option value="dk">Dakika</option>
                 <option value="saat">Saat</option>
               </select>
             </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">Max alanı boş bırakılırsa sabit süre olur.</p>
-          </div>
-
-          <div>
-            <label className="text-sm font-semibold">Fiyat aralığı (TL)</label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Min fiyat" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-              <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max fiyat (opsiyonel)" value={form.priceMax} onChange={(e) => setForm({ ...form, priceMax: e.target.value })} />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">Min</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">Max (opsiyonel)</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  placeholder="—"
+                  value={form.durationMax}
+                  onChange={(e) => setForm({ ...form, durationMax: e.target.value })}
+                />
+              </div>
             </div>
-            <p className="mt-1 text-xs text-[var(--muted)]">Max alanı boş bırakılırsa sabit fiyat olur.</p>
-          </div>
+            <p className="mt-2 text-xs text-[var(--muted)]">Max alanı boş bırakılırsa sabit süre olur.</p>
+          </section>
 
-          <div>
-            <label className="text-sm font-semibold">Kapora tutarı (TL)</label>
-            <input type="number" min={0} className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="0 = kapora yok" value={form.deposit} onChange={(e) => setForm({ ...form, deposit: e.target.value })} />
-            <p className="mt-1 text-xs text-[var(--muted)]">Müşteri randevu alırken bu tutarı sanal POS üzerinden ödeyecek. 0 yazarsan kapora alınmaz.</p>
-          </div>
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <h3 className="text-sm font-semibold">Fiyat (TL)</h3>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">Min</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">Max (opsiyonel)</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  placeholder="—"
+                  value={form.priceMax}
+                  onChange={(e) => setForm({ ...form, priceMax: e.target.value })}
+                />
+              </div>
+            </div>
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--line)] bg-[var(--background)] p-2.5 transition hover:border-[var(--accent)]">
+              <input
+                type="checkbox"
+                checked={form.priceVariable}
+                onChange={(e) => setForm({ ...form, priceVariable: e.target.checked })}
+                className="size-4 rounded accent-teal-600"
+              />
+              <span className="text-xs font-medium">Fiyat değişkenlik gösterebilir</span>
+            </label>
+          </section>
 
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3 transition hover:border-[var(--accent)]">
-            <input type="checkbox" checked={form.priceVariable} onChange={(e) => setForm({ ...form, priceVariable: e.target.checked })} className="size-4 rounded accent-teal-600" />
-            <span className="text-sm font-medium">Fiyat değişkenlik gösterebilir</span>
-          </label>
+          <section className="rounded-xl border border-[var(--line)] bg-gradient-to-br from-teal-50/60 to-[var(--panel-strong)] p-4 dark:from-teal-400/5 dark:to-[var(--panel-strong)]">
+            <h3 className="text-sm font-semibold">Kapora (TL)</h3>
+            <input
+              type="number"
+              min={0}
+              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+              placeholder="0 = kapora alma"
+              value={form.deposit}
+              onChange={(e) => setForm({ ...form, deposit: e.target.value })}
+            />
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Müşteri randevu alırken iyzico üzerinden bu tutarı ödeyecek. 0 yazarsan kapora alınmaz.
+            </p>
+          </section>
+
           <div>
             <label className="text-sm font-semibold">Renk</label>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {colors.map((c) => (
-                <button key={c} onClick={() => setForm({ ...form, color: c })} className={`size-8 rounded-full transition-transform hover:scale-110 ${form.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`} style={{ background: c }} />
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setForm({ ...form, color: c })}
+                  className={`size-9 rounded-full ring-offset-[var(--background)] transition-transform hover:scale-110 ${form.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`}
+                  style={{ background: c }}
+                  aria-label={`Renk ${c}`}
+                />
               ))}
             </div>
           </div>
-          <Button onClick={handleAdd} disabled={!form.name.trim() || submitting} className="mt-2">
-            <Plus size={18} /> {submitting ? "Ekleniyor..." : "Hizmet ekle"}
-          </Button>
+
+          <div className="sticky bottom-0 -mx-5 -mb-5 mt-3 flex gap-2 border-t border-[var(--line)] bg-[var(--background)]/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:-mb-5 sm:px-6">
+            <Button variant="ghost" onClick={() => setShowModal(false)} className="flex-1">
+              İptal
+            </Button>
+            <Button onClick={handleAdd} disabled={!form.name.trim() || submitting} className="flex-1">
+              <Plus size={18} /> {submitting ? "Ekleniyor..." : "Hizmet ekle"}
+            </Button>
+          </div>
         </div>
       </Modal>
 
       {/* Düzenleme Modalı */}
-      <Modal open={editModal} onClose={() => setEditModal(false)} title="Hizmet düzenle">
-        <div className="grid gap-4">
+      <Modal
+        open={editModal}
+        onClose={() => setEditModal(false)}
+        title="Hizmet düzenle"
+        description="Bu hizmetin süre, fiyat ve kapora ayarlarını güncelleyin."
+        size="lg"
+      >
+        <div className="grid gap-5">
           <div>
             <label className="text-sm font-semibold">Hizmet adı</label>
-            <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            <input
+              className="mt-1.5 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+            />
           </div>
 
-          <div>
-            <label className="text-sm font-semibold">Süre aralığı</label>
-            <div className="mt-1 grid grid-cols-[1fr_1fr_auto] gap-2">
-              <input type="number" min={1} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Min" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} />
-              <input type="number" min={1} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max (opsiyonel)" value={editForm.durationMax} onChange={(e) => setEditForm({ ...editForm, durationMax: e.target.value })} />
-              <select className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" value={editForm.durationUnit} onChange={(e) => setEditForm({ ...editForm, durationUnit: e.target.value as "dk" | "saat" })}>
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Süre</h3>
+              <select
+                className="h-9 rounded-md border border-[var(--line)] bg-[var(--background)] px-2 text-xs outline-none"
+                value={editForm.durationUnit}
+                onChange={(e) => setEditForm({ ...editForm, durationUnit: e.target.value as "dk" | "saat" })}
+              >
                 <option value="dk">Dakika</option>
                 <option value="saat">Saat</option>
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-semibold">Fiyat aralığı (TL)</label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Min fiyat" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
-              <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max fiyat (opsiyonel)" value={editForm.priceMax} onChange={(e) => setEditForm({ ...editForm, priceMax: e.target.value })} />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">Min</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  value={editForm.duration}
+                  onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">Max (opsiyonel)</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  placeholder="—"
+                  value={editForm.durationMax}
+                  onChange={(e) => setEditForm({ ...editForm, durationMax: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <label className="text-sm font-semibold">Kapora tutarı (TL)</label>
-            <input type="number" min={0} className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="0 = kapora yok" value={editForm.deposit} onChange={(e) => setEditForm({ ...editForm, deposit: e.target.value })} />
-            <p className="mt-1 text-xs text-[var(--muted)]">Müşteri randevu alırken bu tutarı sanal POS üzerinden ödeyecek.</p>
-          </div>
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+            <h3 className="text-sm font-semibold">Fiyat (TL)</h3>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--muted)]">Min</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--muted)]">Max (opsiyonel)</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+                  placeholder="—"
+                  value={editForm.priceMax}
+                  onChange={(e) => setEditForm({ ...editForm, priceMax: e.target.value })}
+                />
+              </div>
+            </div>
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--line)] bg-[var(--background)] p-2.5">
+              <input
+                type="checkbox"
+                checked={editForm.priceVariable}
+                onChange={(e) => setEditForm({ ...editForm, priceVariable: e.target.checked })}
+                className="size-4 rounded accent-teal-600"
+              />
+              <span className="text-xs font-medium">Fiyat değişkenlik gösterebilir</span>
+            </label>
+          </section>
+
+          <section className="rounded-xl border border-[var(--line)] bg-gradient-to-br from-teal-50/60 to-[var(--panel-strong)] p-4 dark:from-teal-400/5 dark:to-[var(--panel-strong)]">
+            <h3 className="text-sm font-semibold">Kapora (TL)</h3>
+            <input
+              type="number"
+              min={0}
+              className="mt-2 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 text-sm outline-none focus:border-[var(--accent)]"
+              placeholder="0 = kapora alma"
+              value={editForm.deposit}
+              onChange={(e) => setEditForm({ ...editForm, deposit: e.target.value })}
+            />
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Müşteri randevu alırken iyzico üzerinden bu tutarı ödeyecek.
+            </p>
+          </section>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
-            <input type="checkbox" checked={editForm.priceVariable} onChange={(e) => setEditForm({ ...editForm, priceVariable: e.target.checked })} className="size-4 rounded accent-teal-600" />
-            <span className="text-sm font-medium">Fiyat değişkenlik gösterebilir</span>
+            <input
+              type="checkbox"
+              checked={editForm.active}
+              onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })}
+              className="size-4 rounded accent-teal-600"
+            />
+            <span className="text-sm font-medium">Hizmet aktif (müşteriler görsün)</span>
           </label>
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">
-            <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} className="size-4 rounded accent-teal-600" />
-            <span className="text-sm font-medium">Aktif</span>
-          </label>
+
           <div>
             <label className="text-sm font-semibold">Renk</label>
-            <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {colors.map((c) => (
-                <button key={c} onClick={() => setEditForm({ ...editForm, color: c })} className={`size-8 rounded-full transition-transform hover:scale-110 ${editForm.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`} style={{ background: c }} />
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, color: c })}
+                  className={`size-9 rounded-full ring-offset-[var(--background)] transition-transform hover:scale-110 ${editForm.color === c ? "ring-2 ring-offset-2 ring-[var(--accent)]" : ""}`}
+                  style={{ background: c }}
+                  aria-label={`Renk ${c}`}
+                />
               ))}
             </div>
           </div>
-          <Button onClick={handleEdit} disabled={!editForm.name.trim() || submitting} className="mt-2">
-            {submitting ? "Kaydediliyor..." : "Kaydet"}
-          </Button>
+
+          <div className="sticky bottom-0 -mx-5 -mb-5 mt-3 flex gap-2 border-t border-[var(--line)] bg-[var(--background)]/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:-mb-5 sm:px-6">
+            <Button variant="ghost" onClick={() => setEditModal(false)} className="flex-1">
+              İptal
+            </Button>
+            <Button onClick={handleEdit} disabled={!editForm.name.trim() || submitting} className="flex-1">
+              {submitting ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </div>
         </div>
       </Modal>
     </>
