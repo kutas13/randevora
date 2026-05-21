@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Randevu olustur
-  const initialStatus = depositTotal > 0 ? "pending" : "pending";
+  // Randevu olustur — kapora olsa bile direkt CONFIRMED.
+  // Kapora /api/payment/callback'da ayrica islenir (payment_status).
   const paymentStatus = depositTotal > 0 ? "pending" : "none";
 
   const { data: appointment, error: aptErr } = await admin
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       starts_at: startsAt,
       ends_at: endsAt,
       price_cents: priceCents || 0,
-      status: initialStatus,
+      status: "confirmed",
       deposit_amount_cents: depositTotal,
       payment_status: paymentStatus,
       customer_email: email || null,
@@ -96,43 +96,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Randevu oluşturulamadı: " + (aptErr?.message || "") }, { status: 500 });
   }
 
-  // Bildirimleri kuyruga ekle (kapora gerekmeyen direkt onayli randevularda)
-  // Kapora gerekiyorsa, /api/payment/callback basariyla geri donerse o zaman gonderilir.
-  if (depositTotal === 0) {
-    try {
-      const { data: biz } = await admin
-        .from("businesses")
-        .select("name")
-        .eq("id", businessId)
-        .single();
+  // Bildirimleri her durumda kuyruga ekle (kapora olsa da olmasa da)
+  try {
+    const { data: biz } = await admin
+      .from("businesses")
+      .select("name")
+      .eq("id", businessId)
+      .single();
 
-      const { data: emps } = await admin
-        .from("employees")
-        .select("id, phone")
-        .eq("business_id", businessId)
-        .eq("active", true);
+    const { data: emps } = await admin
+      .from("employees")
+      .select("id, phone")
+      .eq("business_id", businessId)
+      .eq("active", true);
 
-      const start = new Date(startsAt);
-      const date = start.toLocaleDateString("tr-TR");
-      const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-      const serviceNames = services.map((s) => s.name).join(", ");
+    const start = new Date(startsAt);
+    const date = start.toLocaleDateString("tr-TR");
+    const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+    const serviceNames = services.map((s) => s.name).join(", ");
 
-      await queueAppointmentNotifications({
-        admin,
-        businessId,
-        appointmentId: appointment.id,
-        customerName: name,
-        customerPhone: phone,
-        date,
-        time,
-        services: serviceNames,
-        businessName: biz?.name || "İşletme",
-        startsAt,
-        employeePhones: (emps || []).map((e) => e.phone).filter((p): p is string => !!p),
-      });
-    } catch (err) {
-      console.error("[public-booking] notification queue failed:", err);
-    }
+    await queueAppointmentNotifications({
+      admin,
+      businessId,
+      appointmentId: appointment.id,
+      customerName: name,
+      customerPhone: phone,
+      date,
+      time,
+      services: serviceNames,
+      businessName: biz?.name || "İşletme",
+      startsAt,
+      employeePhones: (emps || []).map((e) => e.phone).filter((p): p is string => !!p),
+    });
+  } catch (err) {
+    console.error("[public-booking] notification queue failed:", err);
   }
 
   return NextResponse.json({

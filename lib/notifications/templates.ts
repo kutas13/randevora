@@ -1,8 +1,10 @@
 export type TemplateKind =
   | "customer_confirmation"
   | "customer_reminder_24h"
-  | "customer_reminder_3h"
-  | "employee_new_booking";
+  | "customer_reminder_2h"
+  | "employee_new_booking"
+  | "employee_reminder_24h"
+  | "employee_reminder_2h";
 
 export type TemplateVars = {
   customer_name?: string;
@@ -18,10 +20,14 @@ export const DEFAULT_TEMPLATES: Record<TemplateKind, string> = {
     "Merhaba {customer_name}, randevunuz oluşturuldu. ✅\nTarih: {date} {time}\nHizmet: {services}\n{business_name}",
   customer_reminder_24h:
     "Merhaba {customer_name}, yarın {time} saatinde randevunuz var. {business_name} olarak sizi bekliyoruz! 🙌",
-  customer_reminder_3h:
-    "Merhaba {customer_name}, bugün {time} saatindeki randevunuza birkaç saat kaldı. Görüşmek üzere! 👋",
+  customer_reminder_2h:
+    "Merhaba {customer_name}, bugün {time} saatindeki randevunuza 2 saat kaldı. Görüşmek üzere! 👋",
   employee_new_booking:
     "Yeni randevu! 📅\n{customer_name} ({customer_phone})\nTarih: {date} {time}\nHizmet: {services}",
+  employee_reminder_24h:
+    "Yarın {time} saatinde randevu: {customer_name} ({customer_phone}) — {services}",
+  employee_reminder_2h:
+    "2 saat sonra randevu: {customer_name} ({customer_phone}) — {services} ({time})",
 };
 
 export function renderTemplate(template: string, vars: TemplateVars): string {
