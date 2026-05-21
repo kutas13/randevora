@@ -39,7 +39,7 @@ export function Sheet({ open, onClose, children, side = "left" }: SheetProps) {
       <div
         ref={ref}
         className={cn(
-          "fixed top-0 z-50 h-full w-80 overflow-y-auto bg-[var(--background)] shadow-2xl transition-transform duration-300 ease-out",
+          "fixed top-0 z-50 h-full w-full overflow-y-auto bg-[var(--background)] shadow-2xl transition-transform duration-300 ease-out sm:w-80",
           side === "left" ? "left-0" : "right-0",
           open
             ? "translate-x-0"
