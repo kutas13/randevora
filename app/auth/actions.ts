@@ -133,26 +133,81 @@ export async function registerAction(formData: FormData) {
       redirect(redirectUrl);
     }
 
-    // Admin API ile kullanıcı oluştur
-    const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-      email: values.email,
-      password: values.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: values.fullName,
-        business_name: values.businessName,
-        business_slug: values.slug,
-        category: values.category,
-        role: "owner",
-      },
-    });
+    // Bu e-posta zaten auth.users'da var mi? (yetim kayit kontrolu)
+    const { data: usersList } = await admin.auth.admin.listUsers();
+    const existingAuthUser = usersList?.users.find((u) => u.email?.toLowerCase() === values.email.toLowerCase());
 
-    if (createError) {
-      redirectUrl = `/register?error=${encodeURIComponent(createError.message)}`;
-      redirect(redirectUrl);
+    let userId: string;
+
+    if (existingAuthUser) {
+      // public.users'da kaydi var mi?
+      const { data: existingProfile } = await admin
+        .from("users")
+        .select("id, role, business_id")
+        .eq("id", existingAuthUser.id)
+        .maybeSingle();
+
+      // Super admin ise asla silme/dokunma
+      if (existingProfile?.role === "super_admin") {
+        redirectUrl = `/register?error=${encodeURIComponent("Bu e-posta sistem yöneticisine ait. Farklı bir e-posta deneyin.")}`;
+        redirect(redirectUrl);
+      }
+
+      // Onayli/bekleyen isletmesi var mi?
+      let hasActiveBusiness = false;
+      if (existingProfile?.business_id) {
+        const { data: biz } = await admin.from("businesses").select("id, status").eq("id", existingProfile.business_id).maybeSingle();
+        if (biz && biz.status !== "rejected") hasActiveBusiness = true;
+      }
+
+      if (hasActiveBusiness) {
+        redirectUrl = `/register?error=${encodeURIComponent("Bu e-posta zaten kayıtlı. Lütfen giriş yapın veya farklı bir e-posta kullanın.")}`;
+        redirect(redirectUrl);
+      }
+
+      // Yetim kayit: temizle ve sifresini guncelle
+      await admin.from("employees").delete().eq("user_id", existingAuthUser.id);
+      await admin.from("users").delete().eq("id", existingAuthUser.id);
+
+      const { error: updateErr } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
+        password: values.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: values.fullName,
+          business_name: values.businessName,
+          business_slug: values.slug,
+          category: values.category,
+          role: "owner",
+        },
+      });
+
+      if (updateErr) {
+        redirectUrl = `/register?error=${encodeURIComponent(updateErr.message)}`;
+        redirect(redirectUrl);
+      }
+
+      userId = existingAuthUser.id;
+    } else {
+      const { data: newUser, error: createError } = await admin.auth.admin.createUser({
+        email: values.email,
+        password: values.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: values.fullName,
+          business_name: values.businessName,
+          business_slug: values.slug,
+          category: values.category,
+          role: "owner",
+        },
+      });
+
+      if (createError || !newUser?.user) {
+        redirectUrl = `/register?error=${encodeURIComponent(createError?.message || "Kullanıcı oluşturulamadı.")}`;
+        redirect(redirectUrl);
+      }
+
+      userId = newUser.user.id;
     }
-
-    const userId = newUser.user.id;
 
     // İşletmeyi oluştur (status: pending)
     const { data: business, error: bizError } = await admin
@@ -168,19 +223,28 @@ export async function registerAction(formData: FormData) {
       .select("id")
       .single();
 
-    if (bizError) {
-      redirectUrl = `/register?error=${encodeURIComponent(bizError.message)}`;
+    if (bizError || !business) {
+      // Yeni olusturulan user'i geri al (orphan birakma)
+      try { await admin.auth.admin.deleteUser(userId); } catch {}
+      redirectUrl = `/register?error=${encodeURIComponent(bizError?.message || "İşletme oluşturulamadı.")}`;
       redirect(redirectUrl);
     }
 
-    // Kullanıcı profilini oluştur
-    await admin.from("users").insert({
+    // Kullanıcı profilini upsert et (mevcut id ile cakisma olmasin)
+    const { error: userInsertErr } = await admin.from("users").upsert({
       id: userId,
       business_id: business.id,
       role: "owner",
       full_name: values.fullName,
       email: values.email,
-    });
+    }, { onConflict: "id" });
+
+    if (userInsertErr) {
+      try { await admin.from("businesses").delete().eq("id", business.id); } catch {}
+      try { await admin.auth.admin.deleteUser(userId); } catch {}
+      redirectUrl = `/register?error=${encodeURIComponent(userInsertErr.message)}`;
+      redirect(redirectUrl);
+    }
 
     // Employee kaydı oluştur (owner = admin personel olarak da geçer)
     await admin.from("employees").insert({

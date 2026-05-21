@@ -119,7 +119,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden min-h-screen w-72 border-r border-[var(--line)] bg-[var(--panel)] px-4 py-5 backdrop-blur xl:block">
+    <aside className="hidden min-h-screen w-72 shrink-0 border-r border-[var(--line)] bg-[var(--panel)] px-4 py-5 backdrop-blur lg:block">
       <SidebarHeader businessName={businessName} />
       <div className="mt-8">
         <NavItems active={pathname} role={role} />
@@ -174,7 +174,7 @@ export function MobileMenuButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex size-10 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] xl:hidden"
+        className="flex size-10 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] lg:hidden"
         aria-label="Menü"
       >
         <Menu size={20} />
@@ -184,6 +184,18 @@ export function MobileMenuButton() {
           <SidebarHeader businessName={businessName} />
           <div className="mt-8">
             <NavItems active={pathname} role={role} onNavigate={() => setOpen(false)} />
+          </div>
+          <div className="mt-8 border-t border-[var(--line)] pt-4">
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:hover:bg-red-400/10"
+            >
+              <LogOut size={18} />
+              Çıkış yap
+            </button>
           </div>
         </div>
       </Sheet>
