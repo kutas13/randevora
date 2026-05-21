@@ -83,12 +83,24 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
     .eq("business_id", business.id);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[var(--panel)] to-[var(--background)] px-4 py-8">
-      <div className="mx-auto max-w-lg">
+    <main className="relative min-h-screen overflow-hidden bg-[var(--background)] px-4 py-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,rgba(176,124,79,0.18),transparent_60%)]" />
+
+      <div className="relative mx-auto max-w-lg">
         <div className="mb-8 text-center">
-          <img src="/logo.png" alt="Randevora" className="mx-auto size-14 rounded-xl object-cover shadow-lg" />
-          <h1 className="mt-4 text-3xl font-black">{business.name}</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{business.category} · Online randevu al</p>
+          <div className="relative mx-auto inline-flex">
+            <span className="absolute inset-0 rounded-2xl bg-[var(--accent)]/20 blur-xl" />
+            <img
+              src="/logo.png"
+              alt="Randevora"
+              className="relative size-16 rounded-2xl object-cover shadow-xl ring-1 ring-[var(--line)]"
+            />
+          </div>
+          <h1 className="mt-5 text-3xl font-black tracking-tight md:text-4xl">{business.name}</h1>
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--panel)] px-3 py-1 text-[12px] font-medium text-[var(--muted)]">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            {business.category} · Online randevu
+          </p>
         </div>
 
         <BookingForm
@@ -102,6 +114,10 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
           slotCapacity={business.slot_capacity || 1}
           slotMerge={business.slot_merge !== false}
         />
+
+        <p className="mt-8 text-center text-[11px] text-[var(--muted)]">
+          <a href="/" className="underline hover:text-[var(--foreground)]">Randevora</a> ile güvenle randevu alın
+        </p>
       </div>
     </main>
   );

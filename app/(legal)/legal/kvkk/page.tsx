@@ -9,7 +9,11 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="KVKK Aydınlatma Metni" updatedAt="01.05.2026">
+    <LegalPage
+      title="KVKK Aydınlatma Metni"
+      updatedAt="01.05.2026"
+      description="6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işlenen verileriniz hakkında bilgilendirme."
+    >
       <LegalSection title="Veri Sorumlusu">
         <p>
           <strong>Meridyen Yazılım Teknoloji Ticaret Ltd. Şti.</strong> (&quot;Randevora&quot;),

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, CalendarCheck, Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,6 +14,54 @@ export default function LoginPage() {
     <Suspense fallback={<div className="grid min-h-screen place-items-center">Yükleniyor...</div>}>
       <LoginContent />
     </Suspense>
+  );
+}
+
+function BrandPanel() {
+  return (
+    <aside className="relative hidden overflow-hidden lg:block">
+      <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] via-[var(--accent-3)] to-[#3a2a1c]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.10),transparent_45%)]" />
+      <div className="absolute -top-32 -left-32 size-96 rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute -bottom-32 -right-32 size-96 rounded-full bg-black/20 blur-3xl" />
+
+      <div className="relative flex h-full flex-col justify-between p-10 text-white">
+        <Link href="/" className="inline-flex items-center gap-3">
+          <img src="/logo.png" alt="Randevora" className="size-11 rounded-xl object-cover shadow-xl" />
+          <span className="text-xl font-black tracking-tight">Randevora</span>
+        </Link>
+
+        <div>
+          <h2 className="text-4xl font-black leading-[1.1] tracking-tight xl:text-5xl">
+            Randevu yönetiminin{" "}
+            <span className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
+              en zarif yolu
+            </span>
+          </h2>
+          <p className="mt-4 max-w-md text-base text-white/85">
+            Ultra hızlı sayfalar, akıllı takvim, otomatik hatırlatmalar. Tek panelden tüm
+            ekibinizi yönetin.
+          </p>
+
+          <div className="mt-8 grid gap-3">
+            {[
+              { icon: CalendarCheck, text: "Sınırsız randevu" },
+              { icon: ShieldCheck, text: "KVKK uyumlu güvenli altyapı" },
+              { icon: Sparkles, text: "10 gün ücretsiz deneme" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-3 text-sm text-white/90">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+                  <Icon size={16} />
+                </div>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xs text-white/60">© 2026 Randevora · Meridyen Yazılım Teknoloji Ltd. Şti.</p>
+      </div>
+    </aside>
   );
 }
 
@@ -40,7 +88,6 @@ function LoginContent() {
     } catch {}
   }, []);
 
-  // Şifremi unuttum state
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -70,7 +117,6 @@ function LoginContent() {
         return;
       }
 
-      // Beni hatirla kaydi
       try {
         if (rememberMe) {
           localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password }));
@@ -79,8 +125,6 @@ function LoginContent() {
         }
       } catch {}
 
-      // Tam sayfa yenilemesi - cookie'nin server'a propagate olmasi icin
-      // (router.push client-side navigation, middleware bazen cookie'yi goremiyor)
       window.location.assign("/dashboard");
     } catch (err: any) {
       setError(err?.message || "Beklenmedik bir hata oluştu.");
@@ -120,51 +164,64 @@ function LoginContent() {
     setForgotLoading(false);
   }
 
+  const FormCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex w-full items-center justify-center p-6 md:p-10">
+      <div className="w-full max-w-md">
+        <Link href="/" className="flex items-center gap-3 lg:hidden">
+          <img src="/logo.png" alt="Randevora" className="size-10 rounded-xl object-cover shadow-lg" />
+          <strong className="text-lg tracking-tight">Randevora</strong>
+        </Link>
+        {children}
+      </div>
+    </div>
+  );
+
   if (forgotMode) {
     return (
-      <main className="grid min-h-screen place-items-center px-4 py-10">
-        <section className="glass animate-in w-full max-w-md rounded-xl p-7">
-          <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
-            <strong>Randevora</strong>
-          </Link>
-
-          <h1 className="mt-6 text-3xl font-black">Şifre sıfırla</h1>
+      <main className="grid min-h-screen lg:grid-cols-[1fr_1.1fr]">
+        <BrandPanel />
+        <FormCard>
+          <h1 className="mt-8 text-3xl font-black tracking-tight md:text-4xl lg:mt-0">Şifre sıfırla</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">E-posta adresinizi ve yeni şifrenizi girin.</p>
 
           {error && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
               {error}
             </div>
           )}
 
           {forgotSuccess ? (
             <div className="mt-6">
-              <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-400/20 dark:bg-green-400/10 dark:text-green-300">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300">
                 Şifreniz başarıyla değiştirildi! Yeni şifrenizle giriş yapabilirsiniz.
               </div>
-              <Button className="mt-4 w-full" onClick={() => { setForgotMode(false); setForgotSuccess(false); setError(""); }}>
+              <Button
+                className="mt-4 w-full"
+                onClick={() => {
+                  setForgotMode(false);
+                  setForgotSuccess(false);
+                  setError("");
+                }}
+              >
                 Giriş sayfasına dön
               </Button>
             </div>
           ) : (
             <form onSubmit={handleResetPassword} className="mt-6 grid gap-4">
-              <div>
-                <label className="text-sm font-semibold">E-posta</label>
+              <Field label="E-posta">
                 <input
-                  className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+                  className="auth-input"
                   type="email"
                   placeholder="ornek@email.com"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   required
                 />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Yeni şifre</label>
-                <div className="relative mt-1">
+              </Field>
+              <Field label="Yeni şifre">
+                <div className="relative">
                   <input
-                    className="h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 pr-11 outline-none"
+                    className="auth-input pr-11"
                     type={showNewPassword ? "text" : "password"}
                     placeholder="Yeni şifreniz"
                     value={newPassword}
@@ -179,42 +236,51 @@ function LoginContent() {
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-              </div>
-              <Button type="submit" className="h-11 w-full text-base" disabled={forgotLoading}>
+              </Field>
+              <Button type="submit" className="h-12 w-full text-base" disabled={forgotLoading}>
                 {forgotLoading ? "İşleniyor..." : "Şifreyi değiştir"}
               </Button>
-              <button type="button" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]" onClick={() => { setForgotMode(false); setError(""); }}>
+              <button
+                type="button"
+                className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+                onClick={() => {
+                  setForgotMode(false);
+                  setError("");
+                }}
+              >
                 ← Giriş sayfasına dön
               </button>
             </form>
           )}
-        </section>
+        </FormCard>
       </main>
     );
   }
 
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
-      <section className="glass animate-in w-full max-w-md rounded-xl p-7">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="Randevora" className="size-10 rounded-lg object-cover shadow-lg" />
-          <strong>Randevora</strong>
-        </Link>
-
-        <h1 className="mt-6 text-3xl font-black">Giriş yap</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">İşletme panelinize erişmek için giriş yapın.</p>
+    <main className="grid min-h-screen lg:grid-cols-[1fr_1.1fr]">
+      <BrandPanel />
+      <FormCard>
+        <div className="mt-8 lg:mt-0">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-[var(--panel)] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+            Hoş geldin
+          </span>
+          <h1 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Giriş yap</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            İşletme panelinize erişmek için bilgilerinizi girin.
+          </p>
+        </div>
 
         {error && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-300">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="mt-6 grid gap-4">
-          <div>
-            <label className="text-sm font-semibold">E-posta</label>
+          <Field label="E-posta">
             <input
-              className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+              className="auth-input"
               type="email"
               name="email"
               autoComplete="email"
@@ -224,12 +290,12 @@ function LoginContent() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-          </div>
-          <div>
-            <label className="text-sm font-semibold">Şifre</label>
-            <div className="relative mt-1">
+          </Field>
+
+          <Field label="Şifre">
+            <div className="relative">
               <input
-                className="h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 pr-11 outline-none"
+                className="auth-input pr-11"
                 type={showPassword ? "text" : "password"}
                 name="password"
                 autoComplete="current-password"
@@ -246,33 +312,58 @@ function LoginContent() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+          </Field>
+
+          <div className="flex items-center justify-between">
+            <label className="flex cursor-pointer items-center gap-2" htmlFor="remember">
+              <input
+                type="checkbox"
+                id="remember"
+                className="size-4 accent-[var(--accent)]"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span className="text-sm text-[var(--muted)]">Beni hatırla</span>
+            </label>
+            <button
+              type="button"
+              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+              onClick={() => {
+                setForgotMode(true);
+                setError("");
+              }}
+            >
+              Şifremi unuttum
+            </button>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2" htmlFor="remember">
-            <input
-              type="checkbox"
-              id="remember"
-              className="size-4 accent-[var(--accent)]"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-            />
-            <span className="text-sm text-[var(--muted)]">Beni hatırla (e-posta ve şifremi bu cihazda sakla)</span>
-          </label>
-
-          <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
-            {loading ? "Giriş yapılıyor..." : <>Giriş yap <ArrowRight size={18} /></>}
+          <Button type="submit" className="h-12 w-full text-base shadow-lg shadow-[var(--accent)]/15" disabled={loading}>
+            {loading ? (
+              "Giriş yapılıyor..."
+            ) : (
+              <>
+                Giriş yap <ArrowRight size={18} />
+              </>
+            )}
           </Button>
         </form>
 
-        <div className="mt-6 flex items-center justify-between text-sm">
+        <div className="mt-8 border-t border-[var(--line)] pt-6 text-center text-sm text-[var(--muted)]">
+          Hesabınız yok mu?{" "}
           <Link href="/register" className="font-semibold text-[var(--accent)] hover:underline">
-            Yeni işletme oluştur
+            Ücretsiz işletme oluştur
           </Link>
-          <button className="text-[var(--muted)] hover:text-[var(--foreground)]" onClick={() => { setForgotMode(true); setError(""); }}>
-            Şifremi unuttum
-          </button>
         </div>
-      </section>
+      </FormCard>
     </main>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-[13px] font-semibold text-[var(--foreground)]">{label}</label>
+      <div className="mt-1.5">{children}</div>
+    </div>
   );
 }

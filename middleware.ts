@@ -3,7 +3,19 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { verifySaBypass } from "@/lib/sa-bypass";
 
-const publicPaths = ["/", "/login", "/register", "/pending-approval", "/book", "/api", "/sa-login"];
+const publicPaths = [
+  "/",
+  "/login",
+  "/register",
+  "/pending-approval",
+  "/book",
+  "/api",
+  "/sa-login",
+  "/legal",
+  "/iletisim",
+  "/hakkimizda",
+  "/booking-complete",
+];
 
 async function safeMiddleware(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });

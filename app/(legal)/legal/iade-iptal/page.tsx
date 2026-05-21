@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalList, LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { LegalCallout, LegalList, LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Teslimat ve İade Koşulları · Randevora",
@@ -9,8 +9,19 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="Teslimat ve İade Koşulları" updatedAt="01.05.2026">
-      <LegalSection title="Özet">
+    <LegalPage
+      title="Teslimat ve İade Koşulları"
+      updatedAt="01.05.2026"
+      description="SaaS hizmetimizin teslimatı, deneme süresi, abonelik iptali ve iade süreçleri."
+    >
+      <LegalCallout title="Kısaca özet" tone="info">
+        Randevora dijital bir hizmettir. Ödeme onaylandığı anda kullanıma açılır.
+        Tüm yeni hesaplarda <strong>10 gün ücretsiz deneme</strong> vardır; deneme
+        sırasında kart bilgisi alınmaz. Aboneliği panel üzerinden tek tıkla iptal
+        edebilirsiniz.
+      </LegalCallout>
+
+      <LegalSection title="Önemli noktalar">
         <LegalList
           items={[
             "Randevora bir SaaS yazılım hizmetidir; fiziksel ürün teslimatı yapılmaz, hizmet ödeme sonrası anında dijital olarak kullanıma açılır.",

@@ -8,7 +8,11 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="Çerez Politikası" updatedAt="01.05.2026">
+    <LegalPage
+      title="Çerez Politikası"
+      updatedAt="01.05.2026"
+      description="Randevora&apos;da kullanılan çerezler, amaçları ve tercihlerinizi nasıl yönetebileceğiniz."
+    >
       <LegalSection title="Çerez Nedir?">
         <p>
           Çerezler (cookies), tarayıcınız üzerinden cihazınıza yerleştirilen küçük metin

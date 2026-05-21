@@ -9,7 +9,11 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="Gizlilik Politikası" updatedAt="01.05.2026">
+    <LegalPage
+      title="Gizlilik Politikası"
+      updatedAt="01.05.2026"
+      description="Kişisel verilerinizi nasıl topluyor, işliyor ve KVKK kapsamında nasıl koruyoruz."
+    >
       <LegalSection title="1. Veri Sorumlusu">
         <p>
           Bu gizlilik politikası, Türkiye Cumhuriyeti sınırları içinde faaliyet

@@ -9,7 +9,11 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="Mesafeli Satış Sözleşmesi" updatedAt="01.05.2026">
+    <LegalPage
+      title="Mesafeli Satış Sözleşmesi"
+      updatedAt="01.05.2026"
+      description="Randevora abonelik hizmeti için 6502 sayılı kanun kapsamındaki mesafeli satış koşulları."
+    >
       <LegalSection title="1. Taraflar">
         <p>
           İşbu Mesafeli Satış Sözleşmesi (&quot;Sözleşme&quot;), bir tarafta{" "}

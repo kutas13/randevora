@@ -9,7 +9,11 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <LegalPage title="Üyelik Sözleşmesi" updatedAt="01.05.2026">
+    <LegalPage
+      title="Üyelik Sözleşmesi"
+      updatedAt="01.05.2026"
+      description="Randevora platformuna üye olarak kabul ettiğiniz hak ve yükümlülükler."
+    >
       <LegalSection title="1. Taraflar ve Tanımlar">
         <p>
           İşbu sözleşme, <strong>Meridyen Yazılım Teknoloji Ticaret Ltd. Şti.</strong>{" "}

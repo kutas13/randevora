@@ -57,7 +57,17 @@ export default function HomePage() {
             <strong className="text-xl tracking-tight">Randevora</strong>
           </Link>
           <div className="flex items-center gap-2">
-            <Link className="hidden rounded-lg px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] sm:block" href="/login">
+            <a
+              href="tel:+905456036547"
+              className="hidden items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)] md:inline-flex"
+            >
+              <Phone size={12} className="text-[var(--accent)]" />
+              0545 603 65 47
+            </a>
+            <Link
+              className="hidden rounded-lg px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] sm:block"
+              href="/login"
+            >
               Giriş yap
             </Link>
             <Link href="/register">
@@ -273,17 +283,20 @@ export default function HomePage() {
               </p>
             </article>
           </div>
-          <p className="mt-8 text-center text-sm text-[var(--muted)]">
-            Detaylar için{" "}
-            <Link href="/legal/mesafeli-satis" className="text-[var(--accent)] underline">
-              Mesafeli Satış Sözleşmesi
-            </Link>{" "}
-            ve{" "}
-            <Link href="/legal/iade-iptal" className="text-[var(--accent)] underline">
-              Teslimat ve İade Koşulları
-            </Link>
-            &apos;na bakınız.
-          </p>
+          <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 md:flex-row md:justify-between">
+            <p className="text-sm text-[var(--muted)]">
+              Detaylar için{" "}
+              <Link href="/legal/mesafeli-satis" className="text-[var(--accent)] underline">
+                Mesafeli Satış Sözleşmesi
+              </Link>{" "}
+              ve{" "}
+              <Link href="/legal/iade-iptal" className="text-[var(--accent)] underline">
+                Teslimat ve İade Koşulları
+              </Link>
+              &apos;na bakınız.
+            </p>
+            <PaymentBadges />
+          </div>
         </div>
       </section>
 

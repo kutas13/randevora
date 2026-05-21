@@ -1,0 +1,23 @@
+{
+  "name": "randevora-whatsapp-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Randevora WhatsApp bildirim worker'i (Baileys tabanli)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "baileys": "^7.0.0-rc.12",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "pino": "^9.5.0",
+    "qrcode": "^1.5.4"
+  }
+}
