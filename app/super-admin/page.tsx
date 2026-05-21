@@ -95,7 +95,8 @@ export default function SuperAdminPage() {
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    try { await supabase.auth.signOut(); } catch {}
+    try { await fetch("/api/sa-login", { method: "DELETE" }); } catch {}
     window.location.href = "/login";
   }
 

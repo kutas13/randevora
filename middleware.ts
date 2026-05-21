@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { verifySaBypass } from "@/lib/sa-bypass";
 
-const publicPaths = ["/", "/login", "/register", "/pending-approval", "/book", "/api"];
+const publicPaths = ["/", "/login", "/register", "/pending-approval", "/book", "/api", "/sa-login"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -10,6 +11,19 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const superAdminKey = process.env.SUPER_ADMIN_KEY;
+
+  const pathnameEarly = request.nextUrl.pathname;
+  const saCookie = request.cookies.get("sa_bypass")?.value;
+  const saBypass = verifySaBypass(saCookie, superAdminKey);
+
+  if (saBypass && pathnameEarly.startsWith("/super-admin")) {
+    return response;
+  }
+
+  if (saBypass && pathnameEarly === "/login") {
+    return NextResponse.redirect(new URL("/super-admin", request.url));
+  }
 
   if (!supabaseUrl || !supabaseAnonKey) return response;
 
