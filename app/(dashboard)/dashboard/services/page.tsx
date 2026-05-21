@@ -21,6 +21,7 @@ type Service = {
   price_cents: number;
   price_max_cents: number | null;
   price_variable: boolean;
+  deposit_cents: number;
   color: string;
   active: boolean;
 };
@@ -32,6 +33,7 @@ type FormState = {
   durationUnit: "dk" | "saat";
   price: string;
   priceMax: string;
+  deposit: string;
   color: string;
   priceVariable: boolean;
 };
@@ -45,6 +47,7 @@ const emptyForm: FormState = {
   durationUnit: "dk",
   price: "700",
   priceMax: "",
+  deposit: "0",
   color: "#0f766e",
   priceVariable: false,
 };
@@ -122,6 +125,11 @@ export default function ServicesPage() {
       toast("Maksimum fiyat, minimumdan küçük olamaz.", "error"); return;
     }
 
+    const deposit = Math.max(0, Math.floor(Number(form.deposit) || 0));
+    if (deposit > priceMin) {
+      toast("Kapora tutarı, hizmet fiyatından yüksek olamaz.", "error"); return;
+    }
+
     setSubmitting(true);
     const { error } = await supabase.from("services").insert({
       name: form.name,
@@ -130,6 +138,7 @@ export default function ServicesPage() {
       price_cents: priceMin,
       price_max_cents: priceMax,
       price_variable: form.priceVariable || priceMax !== null,
+      deposit_cents: deposit,
       color: form.color,
       business_id: businessId,
     });
@@ -157,6 +166,7 @@ export default function ServicesPage() {
       durationUnit: unit,
       price: String(service.price_cents),
       priceMax: service.price_max_cents ? String(service.price_max_cents) : "",
+      deposit: String(service.deposit_cents || 0),
       color: service.color,
       priceVariable: service.price_variable,
       active: service.active,
@@ -183,6 +193,11 @@ export default function ServicesPage() {
       toast("Maksimum fiyat, minimumdan küçük olamaz.", "error"); return;
     }
 
+    const deposit = Math.max(0, Math.floor(Number(editForm.deposit) || 0));
+    if (deposit > priceMin) {
+      toast("Kapora tutarı, hizmet fiyatından yüksek olamaz.", "error"); return;
+    }
+
     setSubmitting(true);
     const { error } = await supabase.from("services").update({
       name: editForm.name,
@@ -191,6 +206,7 @@ export default function ServicesPage() {
       price_cents: priceMin,
       price_max_cents: priceMax,
       price_variable: editForm.priceVariable || priceMax !== null,
+      deposit_cents: deposit,
       color: editForm.color,
       active: editForm.active,
     }).eq("id", editingService.id);
@@ -261,6 +277,11 @@ export default function ServicesPage() {
                     )}
                   </div>
                 </div>
+                {service.deposit_cents > 0 && (
+                  <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700 dark:bg-teal-400/10 dark:text-teal-300">
+                    Kapora: {formatMoney(service.deposit_cents)}
+                  </p>
+                )}
               </article>
             ))}
           </section>
@@ -295,6 +316,12 @@ export default function ServicesPage() {
               <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max fiyat (opsiyonel)" value={form.priceMax} onChange={(e) => setForm({ ...form, priceMax: e.target.value })} />
             </div>
             <p className="mt-1 text-xs text-[var(--muted)]">Max alanı boş bırakılırsa sabit fiyat olur.</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold">Kapora tutarı (TL)</label>
+            <input type="number" min={0} className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="0 = kapora yok" value={form.deposit} onChange={(e) => setForm({ ...form, deposit: e.target.value })} />
+            <p className="mt-1 text-xs text-[var(--muted)]">Müşteri randevu alırken bu tutarı sanal POS üzerinden ödeyecek. 0 yazarsan kapora alınmaz.</p>
           </div>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3 transition hover:border-[var(--accent)]">
@@ -341,6 +368,12 @@ export default function ServicesPage() {
               <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Min fiyat" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} />
               <input type="number" min={0} className="h-11 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="Max fiyat (opsiyonel)" value={editForm.priceMax} onChange={(e) => setEditForm({ ...editForm, priceMax: e.target.value })} />
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold">Kapora tutarı (TL)</label>
+            <input type="number" min={0} className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="0 = kapora yok" value={editForm.deposit} onChange={(e) => setEditForm({ ...editForm, deposit: e.target.value })} />
+            <p className="mt-1 text-xs text-[var(--muted)]">Müşteri randevu alırken bu tutarı sanal POS üzerinden ödeyecek.</p>
           </div>
 
           <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] p-3">

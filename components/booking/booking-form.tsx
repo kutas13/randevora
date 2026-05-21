@@ -13,6 +13,7 @@ type Service = {
   price_cents: number;
   price_max_cents: number | null;
   price_variable: boolean;
+  deposit_cents: number;
   color: string;
 };
 
@@ -49,6 +50,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   const totalDurationMax = selectedServices.reduce((sum, s) => sum + (s.duration_max_minutes || s.duration_minutes), 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
   const totalPriceMax = selectedServices.reduce((sum, s) => sum + (s.price_max_cents || s.price_cents), 0);
+  const totalDeposit = selectedServices.reduce((sum, s) => sum + (s.deposit_cents || 0), 0);
   const hasDurationRange = totalDurationMax > totalDuration;
   const hasPriceRange = totalPriceMax > totalPrice;
   const [selectedEmployee, setSelectedEmployee] = useState<string>(fixedEmployeeId || "");
@@ -56,6 +58,7 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
   const [time, setTime] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [busySlots, setBusySlots] = useState<string[]>([]);
@@ -167,6 +170,10 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
 
   async function handleSubmit() {
     if (!name.trim() || !phone.trim()) { setError("Ad ve telefon gerekli."); return; }
+    if (totalDeposit > 0 && !email.trim()) {
+      setError("Kapora ödemesi için e-posta gerekli.");
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -183,7 +190,9 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
         businessId,
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim() || null,
         serviceId: selectedServices[0].id,
+        serviceIds: selectedServices.map((s) => s.id),
         employeeId: selectedEmployee || fixedEmployeeId,
         startsAt: startsAt.toISOString(),
         endsAt: endsAt.toISOString(),
@@ -197,6 +206,22 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
     if (!res.ok) {
       setError(data.error || "Randevu oluşturulamadı.");
       setSubmitting(false);
+      return;
+    }
+
+    if (data.requiresPayment && data.appointmentId) {
+      const payRes = await fetch("/api/payment/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: data.appointmentId }),
+      });
+      const payData = await payRes.json();
+      if (!payRes.ok || !payData.paymentPageUrl) {
+        setError(payData.error || "Ödeme başlatılamadı.");
+        setSubmitting(false);
+        return;
+      }
+      window.location.href = payData.paymentPageUrl;
       return;
     }
 
@@ -268,18 +293,31 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                   {s.price_variable && !(s.price_max_cents && s.price_max_cents > s.price_cents) && (
                     <p className="text-[10px] text-orange-600">Değişkenlik gösterebilir</p>
                   )}
+                  {s.deposit_cents > 0 && (
+                    <p className="text-[10px] font-semibold text-teal-700 dark:text-teal-300">
+                      Kapora: {formatMoney(s.deposit_cents)}
+                    </p>
+                  )}
                 </div>
               </button>
             );
           })}
           {selectedServices.length > 0 && (
-            <div className="flex items-center justify-between rounded-lg bg-[var(--accent)]/5 p-3 text-sm">
-              <span>{selectedServices.length} hizmet seçildi</span>
-              <span className="font-bold">
-                {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
-                {" · "}
-                {hasDurationRange ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}` : formatDurationShort(totalDuration)}
-              </span>
+            <div className="grid gap-2 rounded-lg bg-[var(--accent)]/5 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span>{selectedServices.length} hizmet seçildi</span>
+                <span className="font-bold">
+                  {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
+                  {" · "}
+                  {hasDurationRange ? `${formatDurationShort(totalDuration)} – ${formatDurationShort(totalDurationMax)}` : formatDurationShort(totalDuration)}
+                </span>
+              </div>
+              {totalDeposit > 0 && (
+                <div className="flex items-center justify-between rounded-md bg-teal-100 px-2 py-1 text-xs font-semibold text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
+                  <span>Şimdi ödenecek kapora</span>
+                  <span>{formatMoney(totalDeposit)}</span>
+                </div>
+              )}
             </div>
           )}
           <Button onClick={nextStep} disabled={selectedServices.length === 0} className="mt-3">
@@ -381,6 +419,21 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
             <label className="text-sm font-semibold">Telefon</label>
             <input className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none" placeholder="+90 5xx xxx xx xx" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
+          <div>
+            <label className="text-sm font-semibold">
+              E-posta {totalDeposit > 0 ? <span className="text-red-600">*</span> : <span className="text-xs font-normal text-[var(--muted)]">(opsiyonel)</span>}
+            </label>
+            <input
+              type="email"
+              className="mt-1 h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-3 outline-none"
+              placeholder="ornek@eposta.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {totalDeposit > 0 && (
+              <p className="mt-1 text-xs text-[var(--muted)]">Kapora ödemesi için e-posta gerekli.</p>
+            )}
+          </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
             <h3 className="text-sm font-bold">Randevu özeti</h3>
@@ -396,12 +449,23 @@ export function BookingForm({ businessId, services, employees, fixedEmployeeId, 
                 {hasPriceRange ? `${formatMoney(totalPrice)} – ${formatMoney(totalPriceMax)}` : formatMoney(totalPrice)}
               </strong>{hasPriceRange && <span className="ml-1 text-xs text-orange-600 dark:text-orange-400">(aralık)</span>}</p>
             </div>
+            {totalDeposit > 0 && (
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-teal-50 p-3 text-sm font-bold text-teal-800 dark:bg-teal-400/15 dark:text-teal-200">
+                <span>Şimdi ödenecek kapora</span>
+                <span>{formatMoney(totalDeposit)}</span>
+              </div>
+            )}
+            {totalDeposit > 0 && (
+              <p className="mt-2 text-xs text-[var(--muted)]">
+                "Randevu al ve kaporayı öde" butonuna bastığınızda iyzico güvenli ödeme sayfasına yönlendirileceksiniz.
+              </p>
+            )}
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <Button onClick={handleSubmit} disabled={submitting} className="mt-2">
-            {submitting ? "Gönderiliyor..." : "Randevu al"}
+            {submitting ? "Yönlendiriliyor..." : totalDeposit > 0 ? `Randevu al ve ${formatMoney(totalDeposit)} kapora öde` : "Randevu al"}
           </Button>
         </div>
       )}

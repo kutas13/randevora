@@ -22,7 +22,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, duration_minutes, duration_max_minutes, price_cents, price_max_cents, price_variable, color")
+    .select("id, name, duration_minutes, duration_max_minutes, price_cents, price_max_cents, price_variable, deposit_cents, color")
     .eq("business_id", business.id)
     .eq("active", true);
 

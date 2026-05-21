@@ -5,45 +5,87 @@ export async function POST(request: NextRequest) {
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   const body = await request.json();
-  const { businessId, name, phone, serviceId, employeeId, startsAt, endsAt, priceCents } = body;
+  const {
+    businessId,
+    name,
+    phone,
+    email,
+    serviceId,
+    employeeId,
+    startsAt,
+    endsAt,
+    priceCents,
+    serviceIds,
+  } = body;
 
   if (!businessId || !name || !phone || !serviceId || !employeeId || !startsAt || !endsAt) {
     return NextResponse.json({ error: "Eksik bilgi." }, { status: 400 });
   }
 
-  // Müşteri oluştur veya güncelle
+  // Secilen hizmetlerin kapora toplamini hesapla
+  const ids: string[] = Array.isArray(serviceIds) && serviceIds.length > 0 ? serviceIds : [serviceId];
+  const { data: svcRows } = await admin
+    .from("services")
+    .select("id, name, deposit_cents, price_cents")
+    .in("id", ids)
+    .eq("business_id", businessId);
+
+  const services = svcRows || [];
+  const depositTotal = services.reduce((sum, s) => sum + (s.deposit_cents || 0), 0);
+
+  // Musteri olustur/guncelle
   const { data: customer, error: custErr } = await admin
     .from("customers")
     .upsert(
-      { full_name: name, phone, business_id: businessId },
-      { onConflict: "business_id,phone" }
+      { full_name: name, phone, email: email || null, business_id: businessId },
+      { onConflict: "business_id,phone" },
     )
     .select("id")
     .single();
 
   if (custErr || !customer) {
-    return NextResponse.json({ error: "Müşteri kaydı oluşturulamadı: " + (custErr?.message || "") }, { status: 500 });
+    return NextResponse.json(
+      { error: "Müşteri kaydı oluşturulamadı: " + (custErr?.message || "") },
+      { status: 500 },
+    );
   }
 
-  // Randevu oluştur
-  const { error: aptErr } = await admin.from("appointments").insert({
-    business_id: businessId,
-    customer_id: customer.id,
-    service_id: serviceId,
-    employee_id: employeeId,
-    starts_at: startsAt,
-    ends_at: endsAt,
-    price_cents: priceCents || 0,
-    status: "pending",
+  // Randevu olustur
+  const initialStatus = depositTotal > 0 ? "pending" : "pending";
+  const paymentStatus = depositTotal > 0 ? "pending" : "none";
+
+  const { data: appointment, error: aptErr } = await admin
+    .from("appointments")
+    .insert({
+      business_id: businessId,
+      customer_id: customer.id,
+      service_id: serviceId,
+      employee_id: employeeId,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      price_cents: priceCents || 0,
+      status: initialStatus,
+      deposit_amount_cents: depositTotal,
+      payment_status: paymentStatus,
+      customer_email: email || null,
+    })
+    .select("id")
+    .single();
+
+  if (aptErr || !appointment) {
+    return NextResponse.json({ error: "Randevu oluşturulamadı: " + (aptErr?.message || "") }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    appointmentId: appointment.id,
+    customerId: customer.id,
+    depositCents: depositTotal,
+    requiresPayment: depositTotal > 0,
+    services: services.map((s) => ({ id: s.id, name: s.name, deposit: s.deposit_cents || 0 })),
   });
-
-  if (aptErr) {
-    return NextResponse.json({ error: "Randevu oluşturulamadı: " + aptErr.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
 }

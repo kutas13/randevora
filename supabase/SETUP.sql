@@ -174,15 +174,24 @@ CREATE TABLE IF NOT EXISTS public.payments (
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price_max_cents integer;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS duration_max_minutes integer;
 ALTER TABLE public.services ADD COLUMN IF NOT EXISTS price_variable boolean NOT NULL DEFAULT false;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS deposit_cents integer NOT NULL DEFAULT 0;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS booking_window text DEFAULT 'weekly';
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_capacity integer DEFAULT 1;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slot_merge boolean DEFAULT true;
 ALTER TABLE public.blocked_dates ADD COLUMN IF NOT EXISTS recurring boolean NOT NULL DEFAULT false;
 
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS deposit_amount_cents integer NOT NULL DEFAULT 0;
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS payment_status text NOT NULL DEFAULT 'none';
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS payment_ref text;
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS payment_token text;
+ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS customer_email text;
+
 ALTER TABLE public.services DROP CONSTRAINT IF EXISTS services_price_range_check;
 ALTER TABLE public.services ADD CONSTRAINT services_price_range_check CHECK (price_max_cents IS NULL OR price_max_cents >= price_cents);
 ALTER TABLE public.services DROP CONSTRAINT IF EXISTS services_duration_range_check;
 ALTER TABLE public.services ADD CONSTRAINT services_duration_range_check CHECK (duration_max_minutes IS NULL OR duration_max_minutes >= duration_minutes);
+ALTER TABLE public.services DROP CONSTRAINT IF EXISTS services_deposit_check;
+ALTER TABLE public.services ADD CONSTRAINT services_deposit_check CHECK (deposit_cents >= 0 AND deposit_cents <= price_cents);
 
 -- 5) YARDIMCI FONKSIYONLAR
 DROP FUNCTION IF EXISTS public.current_business_id() CASCADE;
