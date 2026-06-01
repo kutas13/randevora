@@ -58,7 +58,9 @@ export default function HomePage() {
           </Link>
           <div className="flex items-center gap-2">
             <a
-              href="tel:+905456036547"
+              href="https://wa.me/905456036547"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--foreground)] md:inline-flex"
             >
               <Phone size={12} className="text-[var(--accent)]" />
@@ -338,7 +340,7 @@ export default function HomePage() {
               Randevunuz bizde. Berber, kuaför, güzellik ve danışmanlık için online randevu sistemi.
             </p>
             <div className="mt-4 grid gap-2 text-sm">
-              <a href="tel:+905456036547" className="inline-flex items-center gap-2 text-[var(--foreground)] hover:text-[var(--accent)]">
+              <a href="https://wa.me/905456036547" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[var(--foreground)] hover:text-[var(--accent)]">
                 <Phone size={14} className="text-[var(--accent)]" /> 0545 603 65 47
               </a>
               <a href="mailto:iletisim@randevora.com.tr" className="inline-flex items-center gap-2 text-[var(--foreground)] hover:text-[var(--accent)]">
@@ -371,7 +373,7 @@ export default function HomePage() {
             <h4 className="text-sm font-bold">Şirket</h4>
             <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
               <li><Link href="/hakkimizda" className="hover:text-[var(--foreground)]">Hakkımızda</Link></li>
-              <li><a href="https://wa.me/905555555555" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">💬 WhatsApp İletişim</a></li>
+              <li><a href="https://wa.me/905456036547" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">💬 WhatsApp İletişim</a></li>
             </ul>
           </div>
 
