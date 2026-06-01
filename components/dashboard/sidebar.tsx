@@ -153,7 +153,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-[var(--line)] bg-[var(--panel)] md:block">
+    <aside className="hidden h-screen w-72 sticky top-0 shrink-0 border-r border-[var(--line)] bg-[var(--panel)] md:block">
       <div className="sticky top-0 flex h-screen flex-col px-4 py-5">
         <SidebarHeader businessName={businessName} />
         <div className="mt-6 flex-1 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:var(--line)_transparent]">

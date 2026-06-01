@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
-import { CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ToastVariant = "success" | "error" | "info" | "warning";
@@ -13,11 +13,11 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-const icons: Record<ToastVariant, React.ReactNode> = {
-  success: <CheckCircle2 size={18} className="text-emerald-600" />,
-  error: <AlertTriangle size={18} className="text-red-600" />,
-  info: <Info size={18} className="text-blue-600" />,
-  warning: <AlertTriangle size={18} className="text-orange-600" />,
+const emojis: Record<ToastVariant, string> = {
+  success: "✅",
+  error: "❌",
+  info: "ℹ️",
+  warning: "⚠️",
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -42,7 +42,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               "animate-in flex items-center gap-3 rounded-lg border border-[var(--line)] bg-[var(--panel-strong)] px-4 py-3 shadow-xl backdrop-blur",
             )}
           >
-            {icons[t.variant]}
+            <span className="text-lg">{emojis[t.variant]}</span>
             <span className="text-sm font-medium">{t.message}</span>
             <button onClick={() => remove(t.id)} className="ml-2 text-[var(--muted)] hover:text-[var(--foreground)]">
               <X size={16} />

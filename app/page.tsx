@@ -371,7 +371,7 @@ export default function HomePage() {
             <h4 className="text-sm font-bold">Şirket</h4>
             <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
               <li><Link href="/hakkimizda" className="hover:text-[var(--foreground)]">Hakkımızda</Link></li>
-              <li><Link href="/iletisim" className="hover:text-[var(--foreground)]">İletişim</Link></li>
+              <li><a href="https://wa.me/905555555555" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">💬 WhatsApp İletişim</a></li>
             </ul>
           </div>
 
